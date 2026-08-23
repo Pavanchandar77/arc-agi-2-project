@@ -1,0 +1,36 @@
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Large / Generated Dataset files
+data/processed/
+data/raw/
+*.jsonl
+
+# Sub-repositories
+ARC-AGI-2/
+unsloth/
+
+# Trained Models & Checkpoints
+models/
+checkpoint-*/
+
+# Environments & Virtual Envs
+.env
+.venv
+env/
+venv/
+ENV/
+env.bak/
+venv.bak/
+
+# Testing & Cache
+.pytest_cache/
+.coverage
+htmlcov/
+
+# Logs & System
+*.log
+.DS_Store
+Thumbs.db

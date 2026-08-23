@@ -1,0 +1,15 @@
+# Fine-Tuning & LLM Libraries
+unsloth
+trl>=0.9.6
+peft>=0.12.0
+transformers>=4.44.0
+datasets>=2.20.0
+accelerate>=0.33.0
+torch>=2.2.0
+
+# Scientific & Utility
+numpy>=1.24.0
+scipy>=1.10.0
+tqdm>=4.66.0
+rich>=13.7.0
+pytest>=8.0.0
