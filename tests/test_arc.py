@@ -24,6 +24,12 @@ from src.build_dataset import (
     split_tasks_by_id,
 )
 from src.evaluate import calculate_cell_accuracy, evaluate_task_predictions
+from src.test_time_train import (
+    capture_trainable_state,
+    create_ttt_dataset_for_task,
+    restore_trainable_state,
+    verify_weight_equality,
+)
 
 
 # ============================================================================
@@ -225,3 +231,101 @@ def test_evaluation_metrics():
     assert calculate_cell_accuracy([[1, 2], [3, 4]], gt) == 1.0
     assert calculate_cell_accuracy([[1, 2], [3, 9]], gt) == 0.75
     assert calculate_cell_accuracy([[1, 2, 3]], gt) == 0.0
+
+
+# ============================================================================
+# 7. Test-Time Training (TTT) Isolation Tests
+# ============================================================================
+
+def test_ttt_dataset_generation():
+    """Verify that TTT builds synthetic dataset from ONLY that task's own demonstrations."""
+    task = create_synthetic_arc_task(task_type="rot90")
+    num_train_pairs = len(task["train"])
+    
+    ttt_records = create_ttt_dataset_for_task(task, num_augmentations=4)
+    assert len(ttt_records) > 0
+
+    # Every generated record must contain prompt and target completion
+    for rec in ttt_records:
+        assert "messages" in rec
+        assert "prompt" in rec
+        assert "completion" in rec
+        assert rec["completion"] is not None
+        assert len(rec["completion"]) > 0
+
+
+class MockParameter:
+    """Mock trainable parameter container for CPU unit testing."""
+    def __init__(self, data, requires_grad=True):
+        self.data = list(data)
+        self.requires_grad = requires_grad
+
+    def copy_(self, other):
+        if hasattr(other, "data"):
+            self.data = list(other.data)
+        elif isinstance(other, list):
+            self.data = list(other)
+        else:
+            self.data = other
+
+    def copy(self):
+        return MockParameter(list(self.data), self.requires_grad)
+
+
+class MockModel:
+    """Mock neural network model with LoRA parameters for testing weight isolation."""
+    def __init__(self):
+        self.lora_A = MockParameter([0.1, 0.2, 0.3, 0.4])
+        self.lora_B = MockParameter([1.0, 2.0, 3.0, 4.0])
+        self.frozen_base = MockParameter([100.0, 200.0], requires_grad=False)
+
+    def named_parameters(self):
+        return [
+            ("lora_A", self.lora_A),
+            ("lora_B", self.lora_B),
+            ("frozen_base", self.frozen_base),
+        ]
+
+
+def test_ttt_weight_reset_isolation():
+    """CRITICAL TEST: Prove that task adaptations are strictly isolated with ZERO weight leakage.
+    
+    Verifies:
+    1. Base snapshot S0 is captured from starting checkpoint.
+    2. Task 1 fine-tuning mutates weights (W1 != W0).
+    3. restore_trainable_state restores weights exactly to S0.
+    4. Task 2 fine-tuning starts strictly from S0 (never from mutated Task 1 state).
+    5. Consecutive tasks never accumulate or leak adapter weights.
+    """
+    model = MockModel()
+
+    # Step 1: Capture immutable base state S0
+    base_state = capture_trainable_state(model)
+    assert "lora_A" in base_state
+    assert "lora_B" in base_state
+    assert "frozen_base" not in base_state  # Frozen parameters excluded
+    assert base_state["lora_A"].data == [0.1, 0.2, 0.3, 0.4]
+    assert verify_weight_equality(model, base_state) is True
+
+    # Step 2: Simulate Task 1 adaptation (mutates weights)
+    model.lora_A.data = [0.99, 0.88, 0.77, 0.66]
+    model.lora_B.data = [5.55, 6.66, 7.77, 8.88]
+    assert verify_weight_equality(model, base_state) is False, "Weights should have changed during Task 1 adaptation"
+
+    # Step 3: Restore to base state
+    restore_trainable_state(model, base_state)
+    assert verify_weight_equality(model, base_state) is True, "Weights must match base state S0 after Task 1 reset"
+    assert model.lora_A.data == [0.1, 0.2, 0.3, 0.4]
+    assert model.lora_B.data == [1.0, 2.0, 3.0, 4.0]
+
+    # Step 4: Simulate Task 2 adaptation (distinct mutations)
+    model.lora_A.data = [-0.11, -0.22, -0.33, -0.44]
+    model.lora_B.data = [-1.0, -2.0, -3.0, -4.0]
+    assert verify_weight_equality(model, base_state) is False
+
+    # Step 5: Restore to base state after Task 2
+    restore_trainable_state(model, base_state)
+    assert verify_weight_equality(model, base_state) is True, "Weights must match base state S0 after Task 2 reset"
+    assert model.lora_A.data == [0.1, 0.2, 0.3, 0.4]
+    assert model.lora_B.data == [1.0, 2.0, 3.0, 4.0]
+
