@@ -1,11 +1,16 @@
-"""Evaluation Pipeline for ARC-AGI-2 with Optional Test-Time Training (TTT).
+"""Evaluation Pipeline for ARC-AGI-2 with Optional TTT and Offline Self-Verification.
 
-Supports two evaluation modes:
-1. Direct Inference: Fast zero-shot/few-shot generation from the base LoRA model.
-2. Test-Time Training (TTT) (--use-ttt): Runs short task-level adaptation per puzzle,
-   generates predictions, and strictly resets weights back to base state between tasks.
+Supports three evaluation modes (compare these three numbers on a GPU):
+1. Direct Inference: Fast generation from the base LoRA model (greedy + one sample).
+2. Test-Time Training (TTT) (--use-ttt): Per-puzzle adaptation, then greedy + one sample,
+   with a strict weight reset between tasks.
+3. TTT + Verification (--use-ttt --use-verification): After TTT, generate more than 2
+   candidates, rank them by how well the same adapted model reconstructs the task's own
+   known training pairs, and submit the top 2 unique grids (ARC pass@2).
 
 Exact-Match Rule: Every cell and dimension must match exactly (100% match, no partial credit).
+Verification is fully offline (no internet, no external APIs) and is legal in the
+sandboxed competition environment.
 
 Usage on GPU environment:
     # Direct evaluation (no TTT)
@@ -13,6 +18,9 @@ Usage on GPU environment:
 
     # Test-Time Training evaluation (TTT)
     python src/evaluate.py --val-file data/processed/arc_val.jsonl --adapter-path models/arc_qwen_1.5b_lora --use-ttt --ttt-steps 30
+
+    # TTT + verification-based pass@2 candidate selection
+    python src/evaluate.py --val-file data/processed/arc_val.jsonl --adapter-path models/arc_qwen_1.5b_lora --use-ttt --use-verification --n-candidates 6
 """
 
 import argparse
@@ -92,6 +100,16 @@ def evaluate_task_predictions(
     }
 
 
+def _eval_mode_label(use_ttt: bool, use_verification: bool) -> str:
+    if use_ttt and use_verification:
+        return "TTT+Verification"
+    if use_verification:
+        return "Direct+Verification"
+    if use_ttt:
+        return "TTT"
+    return "Direct"
+
+
 def run_evaluation(
     val_file: str = "data/processed/arc_val.jsonl",
     raw_tasks_dir: Optional[str] = "ARC-AGI-2/data/training",
@@ -101,9 +119,12 @@ def run_evaluation(
     use_ttt: bool = False,
     ttt_steps: int = 30,
     ttt_lr: float = 5e-4,
+    use_verification: bool = False,
+    n_candidates: int = 6,
+    condition_on_candidate: bool = True,
     max_samples: Optional[int] = None,
 ):
-    """Run ARC evaluation with optional Test-Time Training (TTT)."""
+    """Run ARC evaluation with optional TTT and/or verification-based selection."""
     import torch
     from datasets import load_dataset
     from transformers import AutoModelForCausalLM, AutoTokenizer
@@ -116,7 +137,16 @@ def run_evaluation(
     )
 
     device = "cuda" if torch.cuda.is_available() else "cpu"
-    mode_str = f"WITH Test-Time Training (TTT, {ttt_steps} steps)" if use_ttt else "DIRECT Inference (No TTT)"
+    mode_label = _eval_mode_label(use_ttt, use_verification)
+    if use_ttt:
+        mode_str = f"{mode_label} (TTT {ttt_steps} steps"
+        if use_verification:
+            mode_str += f", {n_candidates} candidates, verification on"
+        mode_str += ")"
+    elif use_verification:
+        mode_str = f"{mode_label} ({n_candidates} candidates, no TTT)"
+    else:
+        mode_str = "DIRECT Inference (No TTT)"
     logger.info(f"Starting ARC-AGI-2 evaluation in mode: {mode_str}")
 
     # 1. Load Tokenizer & Base Model
@@ -168,6 +198,7 @@ def run_evaluation(
     results = []
     total_exact_match = 0
     total_shape_matches = 0
+    verification_metadata_list: List[Dict[str, Any]] = []
 
     for idx, sample in enumerate(dataset, 1):
         task_id = sample.get("task_id", f"task_{idx}")
@@ -186,22 +217,51 @@ def run_evaluation(
             logger.warning(f"Could not parse ground truth for {task_id}, skipping.")
             continue
 
-        if use_ttt and parent_id in raw_tasks:
-            # Run Test-Time Training for this task
+        ver_info: Optional[Dict[str, Any]] = None
+        consistency_str = ""
+
+        if (use_ttt or use_verification) and parent_id in raw_tasks:
             task_dict = raw_tasks[parent_id]
-            att_1_str, att_2_str = predict_task_with_ttt(
-                model=model,
-                tokenizer=tokenizer,
-                task=task_dict,
-                base_state=base_state,
-                test_idx=0,
-                ttt_steps=ttt_steps,
-                learning_rate=ttt_lr,
-                device=device,
-            )
+            if use_verification:
+                from src.verify_and_select import predict_task_with_verified_selection
+
+                att_1_str, att_2_str, ver_info = predict_task_with_verified_selection(
+                    model=model,
+                    tokenizer=tokenizer,
+                    task=task_dict,
+                    base_state=base_state,
+                    test_idx=0,
+                    use_ttt=use_ttt,
+                    ttt_steps=ttt_steps,
+                    learning_rate=ttt_lr,
+                    device=device,
+                    n_candidates=n_candidates,
+                    condition_on_candidate=condition_on_candidate,
+                )
+                ver_info = dict(ver_info)
+                ver_info["task_id"] = task_id
+                verification_metadata_list.append(ver_info)
+                cscore = ver_info.get("training_consistency", {}).get("consistency_score", 0.0)
+                consistency_str = f", consistency={cscore:.2f}"
+            else:
+                att_1_str, att_2_str = predict_task_with_ttt(
+                    model=model,
+                    tokenizer=tokenizer,
+                    task=task_dict,
+                    base_state=base_state,
+                    test_idx=0,
+                    ttt_steps=ttt_steps,
+                    learning_rate=ttt_lr,
+                    device=device,
+                )
             # Verify weight isolation
             assert verify_weight_equality(model, base_state), f"Weight reset verification failed after task {task_id}!"
         else:
+            if (use_ttt or use_verification) and parent_id not in raw_tasks:
+                logger.warning(
+                    f"Raw task '{parent_id}' not found in {raw_tasks_dir}; "
+                    "falling back to direct inference for this sample."
+                )
             # Direct Inference (No TTT)
             model.eval()
             if hasattr(tokenizer, "apply_chat_template"):
@@ -244,6 +304,8 @@ def run_evaluation(
         metrics["task_id"] = task_id
         metrics["raw_attempt_1"] = att_1_str
         metrics["raw_attempt_2"] = att_2_str
+        if ver_info is not None:
+            metrics["verification"] = ver_info
         results.append(metrics)
 
         if metrics["exact_match"]:
@@ -252,7 +314,10 @@ def run_evaluation(
             total_shape_matches += 1
 
         status = "PASSED (Exact Match)" if metrics["exact_match"] else "FAILED"
-        logger.info(f"[{idx}/{total_tasks}] {task_id}: {status} (Best Cell Acc: {metrics['best_cell_accuracy']*100:.1f}%)")
+        logger.info(
+            f"[{idx}/{total_tasks}] {task_id}: {status} "
+            f"(Best Cell Acc: {metrics['best_cell_accuracy']*100:.1f}%{consistency_str})"
+        )
 
     num_eval = len(results)
     if num_eval == 0:
@@ -263,25 +328,44 @@ def run_evaluation(
     shape_rate = (total_shape_matches / num_eval) * 100.0
 
     print("\n" + "=" * 60)
-    print(f"       ARC-AGI-2 EVALUATION ({'WITH TTT' if use_ttt else 'DIRECT'})")
+    print(f"       ARC-AGI-2 EVALUATION ({mode_label})")
     print("=" * 60)
     print(f"Total Validation Cases Evaluated : {num_eval}")
     print(f"Exact-Match Tasks Solved         : {total_exact_match}/{num_eval}")
     print(f"Exact-Match Accuracy             : {accuracy:.2f}% (No partial credit)")
     print(f"Grid Dimension Match Rate        : {shape_rate:.2f}%")
+
+    if use_verification and verification_metadata_list:
+        avg_consistency = sum(
+            vm.get("training_consistency", {}).get("consistency_score", 0.0)
+            for vm in verification_metadata_list
+        ) / len(verification_metadata_list)
+        avg_valid = sum(
+            vm.get("num_valid_candidates", 0) for vm in verification_metadata_list
+        ) / len(verification_metadata_list)
+        print(f"Avg Training Consistency Score   : {avg_consistency:.2f}")
+        print(f"Avg Valid Candidates per Task    : {avg_valid:.1f}")
+
     print("=" * 60 + "\n")
 
     report_payload = {
         "summary": {
-            "mode": "TTT" if use_ttt else "Direct",
+            "mode": mode_label,
             "ttt_steps": ttt_steps if use_ttt else 0,
+            "use_ttt": use_ttt,
+            "use_verification": use_verification,
+            "n_candidates": n_candidates if use_verification else 2,
+            "condition_on_candidate": condition_on_candidate if use_verification else False,
             "total_evaluated": num_eval,
             "exact_match_count": total_exact_match,
             "exact_match_accuracy_percent": round(accuracy, 2),
             "dimension_match_rate_percent": round(shape_rate, 2),
         },
-        "detailed_results": results
+        "detailed_results": results,
     }
+
+    if use_verification and verification_metadata_list:
+        report_payload["verification_details"] = verification_metadata_list
 
     with open(output_report, "w", encoding="utf-8") as f:
         json.dump(report_payload, f, indent=2)
@@ -289,7 +373,9 @@ def run_evaluation(
 
 
 def main():
-    parser = argparse.ArgumentParser(description="Evaluate fine-tuned Qwen2.5 on ARC-AGI-2 (Direct or TTT).")
+    parser = argparse.ArgumentParser(
+        description="Evaluate fine-tuned Qwen2.5 on ARC-AGI-2 (Direct, TTT, or TTT+Verification)."
+    )
     parser.add_argument("--val-file", type=str, default="data/processed/arc_val.jsonl", help="Path to arc_val.jsonl")
     parser.add_argument("--raw-tasks-dir", type=str, default="ARC-AGI-2/data/training", help="Path to raw tasks directory.")
     parser.add_argument("--model-name", type=str, default="Qwen/Qwen2.5-1.5B-Instruct", help="Base model identifier.")
@@ -297,6 +383,32 @@ def main():
     parser.add_argument("--use-ttt", action="store_true", help="Enable Test-Time Training (TTT) adaptation per task.")
     parser.add_argument("--ttt-steps", type=int, default=30, help="Number of gradient steps per task in TTT mode.")
     parser.add_argument("--ttt-lr", type=float, default=5e-4, help="Learning rate for per-task TTT adaptation.")
+    parser.add_argument(
+        "--use-verification",
+        action="store_true",
+        help="Rank >2 candidates by offline train-pair consistency and submit the top 2 (pass@2).",
+    )
+    parser.add_argument(
+        "--n-candidates",
+        "--num-candidates",
+        dest="n_candidates",
+        type=int,
+        default=6,
+        help="Number of test-output candidates to generate before verification ranking.",
+    )
+    parser.add_argument(
+        "--condition-on-candidate",
+        dest="condition_on_candidate",
+        action="store_true",
+        default=True,
+        help="Insert the hypothesized test output as an extra demo while probing train pairs (default on).",
+    )
+    parser.add_argument(
+        "--no-condition-on-candidate",
+        dest="condition_on_candidate",
+        action="store_false",
+        help="Probe train pairs without inserting the candidate as an extra demonstration.",
+    )
     parser.add_argument("--num-samples", type=int, default=None, help="Max test samples to evaluate.")
     parser.add_argument("--output-report", type=str, default="eval_results.json", help="Path for JSON output report.")
     args = parser.parse_args()
@@ -310,6 +422,9 @@ def main():
         use_ttt=args.use_ttt,
         ttt_steps=args.ttt_steps,
         ttt_lr=args.ttt_lr,
+        use_verification=args.use_verification,
+        n_candidates=args.n_candidates,
+        condition_on_candidate=args.condition_on_candidate,
         max_samples=args.num_samples,
     )
 

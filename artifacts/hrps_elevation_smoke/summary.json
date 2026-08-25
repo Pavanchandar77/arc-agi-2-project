@@ -1,0 +1,144 @@
+{
+  "status": "smoke",
+  "not_an_elevation_result": true,
+  "backend": "scripted_standin",
+  "task_ids": [
+    "synth_rot180"
+  ],
+  "summaries": {
+    "M_sym": {
+      "n": 1,
+      "solved": 0,
+      "solve_rate": 0.0,
+      "joint_demo_exact": 1,
+      "pass2": 0,
+      "pass2_rate": 0.0,
+      "failure_taxonomy": {
+        "consistency": 1
+      },
+      "valid_formal_action_rate_mean": null,
+      "n_distinct_hypotheses_mean": null,
+      "n_hypothesis_revisions_mean": null,
+      "n_representation_requests_mean": null,
+      "n_verifier_calls_mean": null,
+      "n_contradiction_resolutions_mean": null,
+      "n_model_calls_mean": null,
+      "wall_clock_mean": null,
+      "n_prompt_tokens_sum": 0,
+      "n_completion_tokens_sum": 0,
+      "solved_ids": [],
+      "joint_not_transferred": [
+        "synth_rot180"
+      ]
+    },
+    "M0": {
+      "n": 1,
+      "solved": 0,
+      "solve_rate": 0.0,
+      "joint_demo_exact": 0,
+      "pass2": 0,
+      "pass2_rate": 0.0,
+      "failure_taxonomy": {
+        "direct_mismatch": 1
+      },
+      "valid_formal_action_rate_mean": 1.0,
+      "n_distinct_hypotheses_mean": 0.0,
+      "n_hypothesis_revisions_mean": 0.0,
+      "n_representation_requests_mean": 0.0,
+      "n_verifier_calls_mean": 0.0,
+      "n_contradiction_resolutions_mean": 0.0,
+      "n_model_calls_mean": 2.0,
+      "wall_clock_mean": 0.003121,
+      "n_prompt_tokens_sum": 170,
+      "n_completion_tokens_sum": 8,
+      "solved_ids": [],
+      "joint_not_transferred": []
+    },
+    "M1": {
+      "n": 1,
+      "solved": 1,
+      "solve_rate": 1.0,
+      "joint_demo_exact": 1,
+      "pass2": 1,
+      "pass2_rate": 1.0,
+      "failure_taxonomy": {
+        "solved": 1
+      },
+      "valid_formal_action_rate_mean": 1.0,
+      "n_distinct_hypotheses_mean": 0.0,
+      "n_hypothesis_revisions_mean": 0.0,
+      "n_representation_requests_mean": 0.0,
+      "n_verifier_calls_mean": 4.0,
+      "n_contradiction_resolutions_mean": 1.0,
+      "n_model_calls_mean": 2.0,
+      "wall_clock_mean": 0.002233,
+      "n_prompt_tokens_sum": 328,
+      "n_completion_tokens_sum": 1,
+      "solved_ids": [
+        "synth_rot180"
+      ],
+      "joint_not_transferred": []
+    },
+    "M2": {
+      "n": 1,
+      "solved": 1,
+      "solve_rate": 1.0,
+      "joint_demo_exact": 1,
+      "pass2": 1,
+      "pass2_rate": 1.0,
+      "failure_taxonomy": {
+        "solved": 1
+      },
+      "valid_formal_action_rate_mean": 1.0,
+      "n_distinct_hypotheses_mean": 2.0,
+      "n_hypothesis_revisions_mean": 1.0,
+      "n_representation_requests_mean": 1.0,
+      "n_verifier_calls_mean": 3.0,
+      "n_contradiction_resolutions_mean": 1.0,
+      "n_model_calls_mean": 6.0,
+      "wall_clock_mean": 0.005782,
+      "n_prompt_tokens_sum": 1267,
+      "n_completion_tokens_sum": 17,
+      "solved_ids": [
+        "synth_rot180"
+      ],
+      "joint_not_transferred": []
+    },
+    "M3": {
+      "n": 1,
+      "solved": 1,
+      "solve_rate": 1.0,
+      "joint_demo_exact": 1,
+      "pass2": 1,
+      "pass2_rate": 1.0,
+      "failure_taxonomy": {
+        "solved": 1
+      },
+      "valid_formal_action_rate_mean": 1.0,
+      "n_distinct_hypotheses_mean": 0.0,
+      "n_hypothesis_revisions_mean": 0.0,
+      "n_representation_requests_mean": 0.0,
+      "n_verifier_calls_mean": 2.0,
+      "n_contradiction_resolutions_mean": 0.0,
+      "n_model_calls_mean": 2.0,
+      "wall_clock_mean": 0.002364,
+      "n_prompt_tokens_sum": 491,
+      "n_completion_tokens_sum": 4,
+      "solved_ids": [
+        "synth_rot180"
+      ],
+      "joint_not_transferred": []
+    }
+  },
+  "verdict": {
+    "claim": "active_hrps_beat_direct_baseline",
+    "m0_solved": 0,
+    "m1_solved": 1,
+    "m2_solved": 1,
+    "m3_solved": 1,
+    "m2_minus_m0": 1,
+    "m3_minus_m2": 0,
+    "criterion": "Capability elevation is M2 (and M3) exact test-transfer vs M0 on the same frozen model, tasks, and matched decoding budget. Valid DSL syntax alone is not elevation."
+  },
+  "note": "Mechanism check only. Same scripted policy fails M0 (copies test input) and solves M2 (inspect, apply, residual, revise, commit). Not a frozen open-model measurement."
+}

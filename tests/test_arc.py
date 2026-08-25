@@ -1,8 +1,10 @@
 """Unit and integration tests for ARC-AGI-2 Suite."""
 
 import json
-import pytest
 from pathlib import Path
+from typing import Optional
+
+import pytest
 
 from src.data import (
     apply_color_map,
@@ -29,6 +31,17 @@ from src.test_time_train import (
     create_ttt_dataset_for_task,
     restore_trainable_state,
     verify_weight_equality,
+)
+from src.verify_and_select import (
+    Candidate,
+    GenerationConfig,
+    ProbeResult,
+    build_candidate_schedule,
+    build_probe_task,
+    consistency_score_from_probe_results,
+    predict_task_with_verified_selection,
+    rank_and_select,
+    select_verified_attempts,
 )
 
 
@@ -328,4 +341,325 @@ def test_ttt_weight_reset_isolation():
     assert verify_weight_equality(model, base_state) is True, "Weights must match base state S0 after Task 2 reset"
     assert model.lora_A.data == [0.1, 0.2, 0.3, 0.4]
     assert model.lora_B.data == [1.0, 2.0, 3.0, 4.0]
+
+
+# ============================================================================
+# 8. Offline Self-Verification & Candidate Selection
+# ============================================================================
+
+def _make_candidate(
+    raw_text: str,
+    grid,
+    consistency: float,
+    *,
+    do_sample: bool = True,
+    temperature: float = 0.7,
+    seed: int = 0,
+    mean_cell: Optional[float] = None,
+    n_exact: int = 0,
+    n_total: int = 2,
+    n_valid: int = 0,
+) -> Candidate:
+    valid = grid is not None
+    return Candidate(
+        raw_text=raw_text,
+        grid=grid,
+        gen_config=GenerationConfig(
+            do_sample=do_sample, temperature=temperature, seed=seed
+        ),
+        consistency_score=consistency,
+        mean_cell_accuracy=mean_cell if mean_cell is not None else consistency,
+        n_train_exact=n_exact,
+        n_train_total=n_total,
+        n_valid_probes=n_valid,
+        is_valid_grid=valid,
+    )
+
+
+def _flip_h_task() -> dict:
+    """Deterministic 2-demo horizontal-flip task used by dummy-model tests."""
+    return {
+        "train": [
+            {"input": [[1, 0], [0, 1]], "output": [[0, 1], [1, 0]]},
+            {"input": [[2, 0], [0, 2]], "output": [[0, 2], [2, 0]]},
+        ],
+        "test": [
+            {"input": [[3, 0], [0, 3]], "output": [[0, 3], [3, 0]]},
+        ],
+    }
+
+
+class DummyRuleModel:
+    """Dummy generator used like MockModel in the TTT isolation tests.
+
+    No torch, no GPU.  `generate(prompt, gen_config)` returns a grid string
+    based on decoding temperature and whether a contradictory hypothesis was
+    inserted into the demonstrations.
+    """
+
+    TEST_IN = "3 0\n0 3"
+    TEST_GOOD = "0 3\n3 0"
+    TEST_BAD_A = "3 0\n0 3"       # identity (wrong)
+    TEST_BAD_B = "1 1\n1 1"       # garbage but valid
+    TRAIN1_IN = "1 0\n0 1"
+    TRAIN1_OUT = "0 1\n1 0"
+    TRAIN2_IN = "2 0\n0 2"
+    TRAIN2_OUT = "0 2\n2 0"
+    WRONG_OUT = "9 9\n9 9"
+
+    def __init__(self):
+        self.calls: list = []
+
+    def generate(self, prompt: str, gen_config: dict) -> str:
+        self.calls.append({"prompt": prompt, "gen_config": dict(gen_config)})
+        do_sample = bool(gen_config.get("do_sample", False))
+        temperature = float(gen_config.get("temperature", 0.0) or 0.0)
+
+        parts = prompt.split("Test Problem:")
+        demo_section = parts[0] if parts else ""
+        test_section = parts[-1] if parts else prompt
+
+        # A contradictory hypothesized test output in the demos poisons probes.
+        # Match against "Output:\n..." so we don't false-positive on the Input grid
+        # (TEST_BAD_A is the identity map and equals TEST_IN).
+        good_hypothesis = f"Output:\n{self.TEST_GOOD}" in demo_section
+        bad_hypothesis = (
+            not good_hypothesis
+            and (
+                f"Output:\n{self.TEST_BAD_A}" in demo_section
+                or f"Output:\n{self.TEST_BAD_B}" in demo_section
+            )
+        )
+
+        asking_train1 = self.TRAIN1_IN in test_section
+        asking_train2 = self.TRAIN2_IN in test_section
+        asking_test = self.TEST_IN in test_section
+
+        if asking_train1 or asking_train2:
+            if bad_hypothesis:
+                return self.WRONG_OUT
+            # Greedy / low-temp is consistent; high-temp sampling is not.
+            if (not do_sample) or temperature <= 0.25:
+                return self.TRAIN1_OUT if asking_train1 else self.TRAIN2_OUT
+            return self.WRONG_OUT
+
+        if asking_test:
+            if (not do_sample) or temperature <= 0.25:
+                return self.TEST_GOOD
+            if temperature <= 0.55:
+                return self.TEST_BAD_A
+            return self.TEST_BAD_B
+
+        return "0"
+
+
+def test_build_probe_task_leave_one_out():
+    task = _flip_h_task()
+    probe = build_probe_task(task, held_out_idx=0)
+    assert probe["test"][0]["input"] == task["train"][0]["input"]
+    assert probe["test"][0]["output"] == task["train"][0]["output"]
+    assert probe["train"] == [task["train"][1]]
+
+
+def test_build_probe_task_single_pair_fallback():
+    task = {
+        "train": [{"input": [[1]], "output": [[2]]}],
+        "test": [{"input": [[3]], "output": [[4]]}],
+    }
+    probe = build_probe_task(task, held_out_idx=0)
+    # No remaining demos: reuse the held-out pair as its own demonstration.
+    assert probe["train"] == [task["train"][0]]
+    assert probe["test"] == [task["train"][0]]
+
+
+def test_build_probe_task_conditions_on_candidate():
+    task = _flip_h_task()
+    candidate_pair = {"input": [[3, 0], [0, 3]], "output": [[0, 3], [3, 0]]}
+    probe = build_probe_task(task, held_out_idx=1, candidate_pair=candidate_pair)
+    assert probe["test"][0] == task["train"][1]
+    assert probe["train"][-1] == candidate_pair
+    assert task["train"][1] not in probe["train"]
+    assert task["train"][0] in probe["train"]
+
+
+def test_consistency_score_from_probe_results():
+    probes = [
+        ProbeResult(0, True, 1.0, True, [[0]], "0"),
+        ProbeResult(1, False, 0.5, True, [[1]], "1"),
+        ProbeResult(2, False, 0.0, False, None, "nope"),
+    ]
+    exact_rate, mean_cell, n_exact, n_valid = consistency_score_from_probe_results(probes)
+    assert exact_rate == pytest.approx(1.0 / 3.0)
+    assert mean_cell == pytest.approx(0.5)
+    assert n_exact == 1
+    assert n_valid == 2
+    assert consistency_score_from_probe_results([]) == (0.0, 0.0, 0, 0)
+
+
+def test_rank_and_select_prefers_higher_consistency():
+    """The two submitted attempts must be the two highest-consistency unique grids."""
+    low = _make_candidate("1 1\n1 1", [[1, 1], [1, 1]], 0.0, temperature=1.0, seed=1)
+    mid = _make_candidate("3 0\n0 3", [[3, 0], [0, 3]], 0.5, temperature=0.7, seed=2)
+    high = _make_candidate("0 3\n3 0", [[0, 3], [3, 0]], 1.0, do_sample=False, temperature=0.0, seed=0)
+
+    selected = rank_and_select([low, mid, high], n_submit=2)
+    assert len(selected) == 2
+    assert selected[0] is high
+    assert selected[1] is mid
+    # The low-consistency candidate is never submitted when better unique grids exist.
+    assert low not in selected
+
+
+def test_rank_and_select_prefers_valid_grid_over_invalid():
+    invalid = _make_candidate("I cannot solve this.", None, 1.0, do_sample=False, temperature=0.0)
+    valid_low = _make_candidate("0 1\n1 0", [[0, 1], [1, 0]], 0.0, temperature=0.7)
+    selected = rank_and_select([invalid, valid_low], n_submit=2)
+    assert selected[0] is valid_low
+    assert selected[1] is invalid
+
+
+def test_rank_and_select_deduplicates_identical_grids():
+    g = [[0, 3], [3, 0]]
+    a = _make_candidate("0 3\n3 0", g, 1.0, do_sample=False, temperature=0.0, seed=0)
+    b = _make_candidate("0 3\n3 0", [list(row) for row in g], 0.5, temperature=0.2, seed=1)
+    c = _make_candidate("1 1\n1 1", [[1, 1], [1, 1]], 0.25, temperature=0.7, seed=2)
+
+    selected = rank_and_select([a, b, c], n_submit=2)
+    assert len(selected) == 2
+    assert selected[0] is a
+    # Duplicate of `a` is skipped in favor of the distinct runner-up.
+    assert selected[1] is c
+
+
+def test_rank_and_select_submits_exactly_two_and_pads_duplicates():
+    only = _make_candidate("0 1\n1 0", [[0, 1], [1, 0]], 1.0, do_sample=False)
+    selected = rank_and_select([only], n_submit=2)
+    assert selected == [only]
+
+    twins = [
+        _make_candidate("0 1\n1 0", [[0, 1], [1, 0]], 1.0, do_sample=False, seed=0),
+        _make_candidate("0 1\n1 0", [[0, 1], [1, 0]], 0.5, temperature=0.4, seed=1),
+    ]
+    padded = rank_and_select(twins, n_submit=2)
+    assert len(padded) == 2
+    assert padded[0] is twins[0]
+    # No distinct runner-up: pad with the duplicate so the caller can still submit 2.
+    assert padded[1] is twins[1]
+
+
+def test_rank_and_select_empty_and_schedule_length():
+    assert rank_and_select([], n_submit=2) == []
+    sched = build_candidate_schedule(8)
+    assert len(sched) == 8
+    assert sched[0].do_sample is False
+    assert all(isinstance(c, GenerationConfig) for c in sched)
+
+
+def test_select_verified_attempts_dummy_model_ranks_consistent_first():
+    """End-to-end selection with a dummy model: greedy (consistent) beats high-temp (not)."""
+    dummy = DummyRuleModel()
+    task = _flip_h_task()
+    schedule = [
+        GenerationConfig(do_sample=False, temperature=0.0, seed=0),
+        GenerationConfig(do_sample=True, temperature=0.4, seed=1),
+        GenerationConfig(do_sample=True, temperature=1.0, seed=2),
+    ]
+
+    att_1, att_2, info = select_verified_attempts(
+        task=task,
+        model=None,
+        tokenizer=None,
+        n_candidates=3,
+        n_submit=2,
+        candidate_schedule=schedule,
+        condition_on_candidate=True,
+        early_stop_perfect=False,
+        generate_fn=dummy.generate,
+    )
+
+    assert text_to_grid(att_1) == [[0, 3], [3, 0]], "Top attempt must be the consistent (greedy) grid"
+    assert info["n_generated"] == 3
+    assert info["n_selected"] == 2
+    assert info["selected"][0]["consistency_score"] == pytest.approx(1.0)
+    assert info["selected"][0]["gen_config"]["do_sample"] is False
+    # Runner-up is a different valid grid with lower consistency.
+    assert text_to_grid(att_2) != text_to_grid(att_1)
+    assert info["selected"][1]["consistency_score"] < info["selected"][0]["consistency_score"]
+    assert dummy.calls, "Dummy model must have been invoked"
+
+
+def test_select_verified_attempts_early_stop_on_two_perfect_unique():
+    dummy = DummyRuleModel()
+    task = _flip_h_task()
+
+    # Both configs are greedy-like so DummyRuleModel returns the SAME perfect grid.
+    # Early-stop requires 2 *unique* perfect grids, so this should NOT stop after 1.
+    same_grid_schedule = [
+        GenerationConfig(do_sample=False, temperature=0.0, seed=0),
+        GenerationConfig(do_sample=False, temperature=0.0, seed=1),
+        GenerationConfig(do_sample=True, temperature=1.0, seed=2),
+    ]
+    _, _, info = select_verified_attempts(
+        task=task,
+        generate_fn=dummy.generate,
+        candidate_schedule=same_grid_schedule,
+        n_submit=2,
+        early_stop_perfect=True,
+        condition_on_candidate=True,
+    )
+    # First two are duplicate perfect grids; must continue to generate the third.
+    assert info["n_generated"] == 3
+    assert info["early_stopped"] is False
+
+
+def test_condition_on_candidate_penalizes_contradictory_hypothesis():
+    """A wrong test-output hypothesis poisons train reconstruction and is ranked down."""
+    dummy = DummyRuleModel()
+    task = _flip_h_task()
+    schedule = [
+        GenerationConfig(do_sample=True, temperature=1.0, seed=2),   # TEST_BAD_B, poisons probes
+        GenerationConfig(do_sample=False, temperature=0.0, seed=0),  # TEST_GOOD, probes succeed
+    ]
+    att_1, att_2, info = select_verified_attempts(
+        task=task,
+        generate_fn=dummy.generate,
+        candidate_schedule=schedule,
+        n_submit=2,
+        early_stop_perfect=False,
+        condition_on_candidate=True,
+    )
+    assert text_to_grid(att_1) == [[0, 3], [3, 0]]
+    assert info["selected"][0]["consistency_score"] == pytest.approx(1.0)
+    assert info["selected"][1]["consistency_score"] == pytest.approx(0.0)
+    assert text_to_grid(att_2) == [[1, 1], [1, 1]]
+
+
+def test_verified_selection_restores_weights_like_ttt():
+    """Same isolation contract as test_ttt_weight_reset_isolation, on the verification path."""
+    model = MockModel()
+    base_state = capture_trainable_state(model)
+
+    # Simulate adapter drift that happened before/during selection.
+    model.lora_A.data = [9.0, 9.0, 9.0, 9.0]
+    model.lora_B.data = [8.0, 8.0, 8.0, 8.0]
+    assert verify_weight_equality(model, base_state) is False
+
+    dummy = DummyRuleModel()
+    predict_task_with_verified_selection(
+        model=model,
+        tokenizer=None,
+        task=_flip_h_task(),
+        base_state=base_state,
+        use_ttt=False,  # skip adapt_model_to_task (would import torch)
+        generate_fn=dummy.generate,
+        n_candidates=2,
+        device="cpu",
+    )
+
+    assert verify_weight_equality(model, base_state) is True, (
+        "Verification path must restore LoRA weights even when TTT is skipped"
+    )
+    assert model.lora_A.data == [0.1, 0.2, 0.3, 0.4]
+    assert model.lora_B.data == [1.0, 2.0, 3.0, 4.0]
+
 

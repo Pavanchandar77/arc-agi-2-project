@@ -1,0 +1,128 @@
+{
+  "baseline_depth": 3,
+  "raised_depth": 3,
+  "same_task_ids": true,
+  "stages": {
+    "A": {
+      "baseline_class_counts": {
+        "not_expressible": 24,
+        "unsolved_search_still_truncated": 13,
+        "solved_at_low_budget": 3
+      },
+      "raised_class_counts": {
+        "not_expressible": 22,
+        "unsolved_search_still_truncated": 15,
+        "solved_at_low_budget": 3
+      },
+      "baseline_ceiling": {
+        "n": 40,
+        "solved_any_budget": 3,
+        "not_expressible": 24,
+        "still_truncated": 13,
+        "decided": 27,
+        "accuracy_lower_bound": 0.075,
+        "accuracy_upper_bound": 0.4,
+        "ceiling_among_exhausted": 0.111111,
+        "search_truncation_share_of_unsolved": 0.351351,
+        "verdict": "both_truncation_and_expressiveness"
+      },
+      "raised_ceiling": {
+        "n": 40,
+        "solved_any_budget": 3,
+        "not_expressible": 22,
+        "still_truncated": 15,
+        "decided": 25,
+        "accuracy_lower_bound": 0.075,
+        "accuracy_upper_bound": 0.45,
+        "ceiling_among_exhausted": 0.12,
+        "search_truncation_share_of_unsolved": 0.405405,
+        "verdict": "both_truncation_and_expressiveness"
+      },
+      "newly_solved": [],
+      "lost_solved": [],
+      "n_newly_solved": 0,
+      "n_lost_solved": 0,
+      "higher_budget_solves_raised": 0
+    },
+    "F": {
+      "baseline_class_counts": {
+        "unsolved_search_still_truncated": 26,
+        "not_expressible": 10,
+        "solved_at_low_budget": 4
+      },
+      "raised_class_counts": {
+        "unsolved_search_still_truncated": 29,
+        "not_expressible": 7,
+        "solved_at_low_budget": 4
+      },
+      "baseline_ceiling": {
+        "n": 40,
+        "solved_any_budget": 4,
+        "not_expressible": 10,
+        "still_truncated": 26,
+        "decided": 14,
+        "accuracy_lower_bound": 0.1,
+        "accuracy_upper_bound": 0.75,
+        "ceiling_among_exhausted": 0.285714,
+        "search_truncation_share_of_unsolved": 0.722222,
+        "verdict": "both_truncation_and_expressiveness"
+      },
+      "raised_ceiling": {
+        "n": 40,
+        "solved_any_budget": 4,
+        "not_expressible": 7,
+        "still_truncated": 29,
+        "decided": 11,
+        "accuracy_lower_bound": 0.1,
+        "accuracy_upper_bound": 0.825,
+        "ceiling_among_exhausted": 0.363636,
+        "search_truncation_share_of_unsolved": 0.805556,
+        "verdict": "both_truncation_and_expressiveness"
+      },
+      "newly_solved": [],
+      "lost_solved": [],
+      "n_newly_solved": 0,
+      "n_lost_solved": 0,
+      "higher_budget_solves_raised": 0
+    },
+    "G": {
+      "baseline_class_counts": {
+        "not_expressible": 36,
+        "solved_at_low_budget": 4
+      },
+      "raised_class_counts": {
+        "not_expressible": 36,
+        "solved_at_low_budget": 4
+      },
+      "baseline_ceiling": {
+        "n": 40,
+        "solved_any_budget": 4,
+        "not_expressible": 36,
+        "still_truncated": 0,
+        "decided": 40,
+        "accuracy_lower_bound": 0.1,
+        "accuracy_upper_bound": 0.1,
+        "ceiling_among_exhausted": 0.1,
+        "search_truncation_share_of_unsolved": 0.0,
+        "verdict": "primarily_dsl_expressiveness_ceiling"
+      },
+      "raised_ceiling": {
+        "n": 40,
+        "solved_any_budget": 4,
+        "not_expressible": 36,
+        "still_truncated": 0,
+        "decided": 40,
+        "accuracy_lower_bound": 0.1,
+        "accuracy_upper_bound": 0.1,
+        "ceiling_among_exhausted": 0.1,
+        "search_truncation_share_of_unsolved": 0.0,
+        "verdict": "primarily_dsl_expressiveness_ceiling"
+      },
+      "newly_solved": [],
+      "lost_solved": [],
+      "n_newly_solved": 0,
+      "n_lost_solved": 0,
+      "higher_budget_solves_raised": 0
+    }
+  }
+}

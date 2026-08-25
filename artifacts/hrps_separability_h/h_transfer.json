@@ -1,0 +1,17 @@
+{
+  "n_abstractions": 7,
+  "n_joint_hits_outside_provenance": 1,
+  "n_held_out_transfer": 1,
+  "n_negative_transfer": 0,
+  "n_reuse_events": 1,
+  "hits": [
+    {
+      "abstraction": "abs_crop_fg_0_left_half_top_half",
+      "body": "crop_fg:0 | left_half | top_half",
+      "task_id": "73182012",
+      "from_provenance": false,
+      "joint_demos": true,
+      "test_transfer": true
+    }
+  ]
+}

@@ -1,0 +1,1766 @@
+{
+  "n_joint_demo_solutions": 26,
+  "n_test_transfer_success": 25,
+  "n_test_transfer_fail": 1,
+  "families": {
+    "apply_colormap": 5,
+    "crop_fg": 7,
+    "gravity": 1,
+    "rot180": 2,
+    "upscale": 3,
+    "flip_h": 1,
+    "flip_v": 1,
+    "recolor": 1,
+    "transpose": 2,
+    "tile": 1,
+    "left_half": 1,
+    "rot270": 1
+  },
+  "transfer_failures": [
+    {
+      "task_id": "aabf363d",
+      "program": "apply_colormap:0-0;2-4;3-6;4-0;6-0",
+      "constraint_failure": "joint_map_is_union_of_disjoint_per_demo_palettes+test_introduces_unseen_input_colors+color_plays_marker_role_in_one_pair_and_blob_role_in_another",
+      "colormap": {
+        "program": "apply_colormap:0-0;2-4;3-6;4-0;6-0",
+        "inferred_joint_map": [
+          [
+            0,
+            0
+          ],
+          [
+            2,
+            4
+          ],
+          [
+            3,
+            6
+          ],
+          [
+            4,
+            0
+          ],
+          [
+            6,
+            0
+          ]
+        ],
+        "disjoint_per_demo_color_support": true,
+        "per_demo_maps": [
+          {
+            "map": [
+              [
+                0,
+                0
+              ],
+              [
+                3,
+                6
+              ],
+              [
+                6,
+                0
+              ]
+            ],
+            "input_colors": [
+              0,
+              3,
+              6
+            ],
+            "output_colors": [
+              0,
+              6
+            ],
+            "singletons": [
+              [
+                6,
+                0,
+                6
+              ]
+            ],
+            "corner_nonzero": [
+              [
+                "bl",
+                6
+              ]
+            ]
+          },
+          {
+            "map": [
+              [
+                0,
+                0
+              ],
+              [
+                2,
+                4
+              ],
+              [
+                4,
+                0
+              ]
+            ],
+            "input_colors": [
+              0,
+              2,
+              4
+            ],
+            "output_colors": [
+              0,
+              4
+            ],
+            "singletons": [
+              [
+                6,
+                0,
+                4
+              ]
+            ],
+            "corner_nonzero": [
+              [
+                "bl",
+                4
+              ]
+            ]
+          }
+        ],
+        "test_unseen_input_colors": [
+          8
+        ],
+        "role_collision_colors": [
+          2
+        ],
+        "test_replay": [
+          {
+            "pred_equals_gt": false,
+            "input_colors": [
+              0,
+              2,
+              8
+            ],
+            "gt_colors": [
+              0,
+              2
+            ],
+            "pred_colors": [
+              0,
+              4,
+              8
+            ],
+            "singletons": [
+              [
+                6,
+                0,
+                2
+              ]
+            ],
+            "corner_nonzero": [
+              [
+                "bl",
+                2
+              ]
+            ],
+            "unseen_input_colors": [
+              8
+            ]
+          }
+        ],
+        "constraint_failure": "joint_map_is_union_of_disjoint_per_demo_palettes+test_introduces_unseen_input_colors+color_plays_marker_role_in_one_pair_and_blob_role_in_another"
+      }
+    }
+  ],
+  "all": [
+    {
+      "task_id": "0d3d703e",
+      "solved": true,
+      "failure_category": "solved",
+      "program": "apply_colormap:1-5;2-6;3-4;4-3;5-1;6-2;8-9;9-8",
+      "family": "apply_colormap",
+      "n_train": 4,
+      "n_test": 1,
+      "ttf": 0.002663400024175644,
+      "nodes_expanded": 200,
+      "description_length": 24,
+      "colormap": {
+        "program": "apply_colormap:1-5;2-6;3-4;4-3;5-1;6-2;8-9;9-8",
+        "inferred_joint_map": [
+          [
+            1,
+            5
+          ],
+          [
+            2,
+            6
+          ],
+          [
+            3,
+            4
+          ],
+          [
+            4,
+            3
+          ],
+          [
+            5,
+            1
+          ],
+          [
+            6,
+            2
+          ],
+          [
+            8,
+            9
+          ],
+          [
+            9,
+            8
+          ]
+        ],
+        "disjoint_per_demo_color_support": false,
+        "per_demo_maps": [
+          {
+            "map": [
+              [
+                5,
+                1
+              ],
+              [
+                6,
+                2
+              ],
+              [
+                8,
+                9
+              ]
+            ],
+            "input_colors": [
+              5,
+              6,
+              8
+            ],
+            "output_colors": [
+              1,
+              2,
+              9
+            ],
+            "singletons": [],
+            "corner_nonzero": [
+              [
+                "tl",
+                5
+              ],
+              [
+                "tr",
+                6
+              ],
+              [
+                "bl",
+                5
+              ],
+              [
+                "br",
+                6
+              ]
+            ]
+          },
+          {
+            "map": [
+              [
+                2,
+                6
+              ],
+              [
+                3,
+                4
+              ],
+              [
+                8,
+                9
+              ]
+            ],
+            "input_colors": [
+              2,
+              3,
+              8
+            ],
+            "output_colors": [
+              4,
+              6,
+              9
+            ],
+            "singletons": [],
+            "corner_nonzero": [
+              [
+                "tl",
+                2
+              ],
+              [
+                "tr",
+                8
+              ],
+              [
+                "bl",
+                2
+              ],
+              [
+                "br",
+                8
+              ]
+            ]
+          },
+          {
+            "map": [
+              [
+                2,
+                6
+              ],
+              [
+                4,
+                3
+              ],
+              [
+                9,
+                8
+              ]
+            ],
+            "input_colors": [
+              2,
+              4,
+              9
+            ],
+            "output_colors": [
+              3,
+              6,
+              8
+            ],
+            "singletons": [],
+            "corner_nonzero": [
+              [
+                "tl",
+                9
+              ],
+              [
+                "tr",
+                2
+              ],
+              [
+                "bl",
+                9
+              ],
+              [
+                "br",
+                2
+              ]
+            ]
+          },
+          {
+            "map": [
+              [
+                1,
+                5
+              ],
+              [
+                2,
+                6
+              ],
+              [
+                3,
+                4
+              ]
+            ],
+            "input_colors": [
+              1,
+              2,
+              3
+            ],
+            "output_colors": [
+              4,
+              5,
+              6
+            ],
+            "singletons": [],
+            "corner_nonzero": [
+              [
+                "tl",
+                3
+              ],
+              [
+                "tr",
+                2
+              ],
+              [
+                "bl",
+                3
+              ],
+              [
+                "br",
+                2
+              ]
+            ]
+          }
+        ],
+        "test_unseen_input_colors": [],
+        "role_collision_colors": [],
+        "test_replay": [
+          {
+            "pred_equals_gt": true,
+            "input_colors": [
+              1,
+              3,
+              8
+            ],
+            "gt_colors": [
+              4,
+              5,
+              9
+            ],
+            "pred_colors": [
+              4,
+              5,
+              9
+            ],
+            "singletons": [],
+            "corner_nonzero": [
+              [
+                "tl",
+                8
+              ],
+              [
+                "tr",
+                3
+              ],
+              [
+                "bl",
+                8
+              ],
+              [
+                "br",
+                3
+              ]
+            ],
+            "unseen_input_colors": []
+          }
+        ],
+        "constraint_failure": "constrained_and_transferred"
+      }
+    },
+    {
+      "task_id": "1cf80156",
+      "solved": true,
+      "failure_category": "solved",
+      "program": "crop_fg:0",
+      "family": "crop_fg",
+      "n_train": 3,
+      "n_test": 1,
+      "ttf": 0.004555099876597524,
+      "nodes_expanded": 13,
+      "description_length": 3,
+      "colormap": null,
+      "constraint_failure": "constrained_and_transferred"
+    },
+    {
+      "task_id": "2013d3e2",
+      "solved": true,
+      "failure_category": "solved",
+      "program": "crop_fg:0 | left_half | top_half",
+      "family": "crop_fg",
+      "n_train": 2,
+      "n_test": 1,
+      "ttf": 0.01924200006760657,
+      "nodes_expanded": 200,
+      "description_length": 9,
+      "colormap": null,
+      "constraint_failure": "constrained_and_transferred"
+    },
+    {
+      "task_id": "28bf18c6",
+      "solved": true,
+      "failure_category": "solved",
+      "program": "crop_fg:0 | tile:1x2",
+      "family": "crop_fg",
+      "n_train": 3,
+      "n_test": 1,
+      "ttf": 0.011927500134333968,
+      "nodes_expanded": 49,
+      "description_length": 6,
+      "colormap": null,
+      "constraint_failure": "constrained_and_transferred"
+    },
+    {
+      "task_id": "3906de3d",
+      "solved": true,
+      "failure_category": "solved",
+      "program": "gravity:0,0",
+      "family": "gravity",
+      "n_train": 3,
+      "n_test": 1,
+      "ttf": 0.016601499868556857,
+      "nodes_expanded": 32,
+      "description_length": 4,
+      "colormap": null,
+      "constraint_failure": "constrained_and_transferred"
+    },
+    {
+      "task_id": "3c9b0459",
+      "solved": true,
+      "failure_category": "solved",
+      "program": "rot180",
+      "family": "rot180",
+      "n_train": 4,
+      "n_test": 1,
+      "ttf": 0.004615900106728077,
+      "nodes_expanded": 3,
+      "description_length": 2,
+      "colormap": null,
+      "constraint_failure": "constrained_and_transferred"
+    },
+    {
+      "task_id": "60c09cac",
+      "solved": true,
+      "failure_category": "solved",
+      "program": "upscale:2",
+      "family": "upscale",
+      "n_train": 2,
+      "n_test": 1,
+      "ttf": 0.015395900001749396,
+      "nodes_expanded": 17,
+      "description_length": 3,
+      "colormap": null,
+      "constraint_failure": "constrained_and_transferred"
+    },
+    {
+      "task_id": "6150a2bd",
+      "solved": true,
+      "failure_category": "solved",
+      "program": "rot180",
+      "family": "rot180",
+      "n_train": 2,
+      "n_test": 1,
+      "ttf": 0.041228999849408865,
+      "nodes_expanded": 3,
+      "description_length": 2,
+      "colormap": null,
+      "constraint_failure": "constrained_and_transferred"
+    },
+    {
+      "task_id": "67a3c6ac",
+      "solved": true,
+      "failure_category": "solved",
+      "program": "flip_h",
+      "family": "flip_h",
+      "n_train": 3,
+      "n_test": 1,
+      "ttf": 0.00570239988155663,
+      "nodes_expanded": 5,
+      "description_length": 2,
+      "colormap": null,
+      "constraint_failure": "constrained_and_transferred"
+    },
+    {
+      "task_id": "68b16354",
+      "solved": true,
+      "failure_category": "solved",
+      "program": "flip_v",
+      "family": "flip_v",
+      "n_train": 3,
+      "n_test": 1,
+      "ttf": 0.008178300224244595,
+      "nodes_expanded": 6,
+      "description_length": 2,
+      "colormap": null,
+      "constraint_failure": "constrained_and_transferred"
+    },
+    {
+      "task_id": "6f8cd79b",
+      "solved": true,
+      "failure_category": "solved",
+      "program": "recolor:0,8 | outline:0",
+      "family": "recolor",
+      "n_train": 4,
+      "n_test": 1,
+      "ttf": 0.011193499900400639,
+      "nodes_expanded": 85,
+      "description_length": 10,
+      "colormap": null,
+      "constraint_failure": "constrained_and_transferred"
+    },
+    {
+      "task_id": "73182012",
+      "solved": true,
+      "failure_category": "solved",
+      "program": "crop_fg:0 | left_half | top_half",
+      "family": "crop_fg",
+      "n_train": 3,
+      "n_test": 1,
+      "ttf": 0.020539200166240335,
+      "nodes_expanded": 119,
+      "description_length": 9,
+      "colormap": null,
+      "constraint_failure": "constrained_and_transferred"
+    },
+    {
+      "task_id": "7468f01a",
+      "solved": true,
+      "failure_category": "solved",
+      "program": "crop_fg:0 | flip_h",
+      "family": "crop_fg",
+      "n_train": 3,
+      "n_test": 1,
+      "ttf": 0.015308599919080734,
+      "nodes_expanded": 32,
+      "description_length": 5,
+      "colormap": null,
+      "constraint_failure": "constrained_and_transferred"
+    },
+    {
+      "task_id": "74dd1130",
+      "solved": true,
+      "failure_category": "solved",
+      "program": "transpose",
+      "family": "transpose",
+      "n_train": 4,
+      "n_test": 1,
+      "ttf": 0.0047200999688357115,
+      "nodes_expanded": 7,
+      "description_length": 2,
+      "colormap": null,
+      "constraint_failure": "constrained_and_transferred"
+    },
+    {
+      "task_id": "9172f3a0",
+      "solved": true,
+      "failure_category": "solved",
+      "program": "upscale:3",
+      "family": "upscale",
+      "n_train": 2,
+      "n_test": 1,
+      "ttf": 0.0064749999437481165,
+      "nodes_expanded": 20,
+      "description_length": 3,
+      "colormap": null,
+      "constraint_failure": "constrained_and_transferred"
+    },
+    {
+      "task_id": "9dfd6313",
+      "solved": true,
+      "failure_category": "solved",
+      "program": "transpose",
+      "family": "transpose",
+      "n_train": 3,
+      "n_test": 1,
+      "ttf": 0.007899800082668662,
+      "nodes_expanded": 7,
+      "description_length": 2,
+      "colormap": null,
+      "constraint_failure": "constrained_and_transferred"
+    },
+    {
+      "task_id": "a416b8f3",
+      "solved": true,
+      "failure_category": "solved",
+      "program": "tile:1x2",
+      "family": "tile",
+      "n_train": 3,
+      "n_test": 1,
+      "ttf": 0.008514799876138568,
+      "nodes_expanded": 16,
+      "description_length": 3,
+      "colormap": null,
+      "constraint_failure": "constrained_and_transferred"
+    },
+    {
+      "task_id": "a740d043",
+      "solved": true,
+      "failure_category": "solved",
+      "program": "crop_fg:1 | apply_colormap:1-0;2-2;3-3;5-5;6-6",
+      "family": "crop_fg",
+      "n_train": 3,
+      "n_test": 1,
+      "ttf": 0.08201380004175007,
+      "nodes_expanded": 200,
+      "description_length": 21,
+      "colormap": {
+        "program": "crop_fg:1 | apply_colormap:1-0;2-2;3-3;5-5;6-6",
+        "inferred_joint_map": null,
+        "disjoint_per_demo_color_support": false,
+        "per_demo_maps": [
+          {
+            "map": [],
+            "input_colors": [
+              1,
+              2,
+              3
+            ],
+            "output_colors": [
+              0,
+              2,
+              3
+            ],
+            "singletons": [],
+            "corner_nonzero": [
+              [
+                "tl",
+                1
+              ],
+              [
+                "tr",
+                1
+              ],
+              [
+                "bl",
+                1
+              ],
+              [
+                "br",
+                1
+              ]
+            ]
+          },
+          {
+            "map": [],
+            "input_colors": [
+              1,
+              2,
+              3
+            ],
+            "output_colors": [
+              0,
+              2,
+              3
+            ],
+            "singletons": [],
+            "corner_nonzero": [
+              [
+                "tl",
+                1
+              ],
+              [
+                "tr",
+                1
+              ],
+              [
+                "bl",
+                1
+              ],
+              [
+                "br",
+                1
+              ]
+            ]
+          },
+          {
+            "map": [],
+            "input_colors": [
+              1,
+              5,
+              6
+            ],
+            "output_colors": [
+              5,
+              6
+            ],
+            "singletons": [],
+            "corner_nonzero": [
+              [
+                "tl",
+                1
+              ],
+              [
+                "tr",
+                1
+              ],
+              [
+                "bl",
+                1
+              ],
+              [
+                "br",
+                1
+              ]
+            ]
+          }
+        ],
+        "test_unseen_input_colors": [],
+        "role_collision_colors": [],
+        "test_replay": [
+          {
+            "pred_equals_gt": true,
+            "input_colors": [
+              1,
+              2,
+              3
+            ],
+            "gt_colors": [
+              0,
+              2,
+              3
+            ],
+            "pred_colors": [
+              0,
+              2,
+              3
+            ],
+            "singletons": [],
+            "corner_nonzero": [
+              [
+                "tl",
+                1
+              ],
+              [
+                "tr",
+                1
+              ],
+              [
+                "bl",
+                1
+              ],
+              [
+                "br",
+                1
+              ]
+            ],
+            "unseen_input_colors": []
+          }
+        ],
+        "constraint_failure": "constrained_and_transferred"
+      }
+    },
+    {
+      "task_id": "aabf363d",
+      "solved": false,
+      "failure_category": "consistency",
+      "program": "apply_colormap:0-0;2-4;3-6;4-0;6-0",
+      "family": "apply_colormap",
+      "n_train": 2,
+      "n_test": 1,
+      "ttf": 0.02469390002079308,
+      "nodes_expanded": 17,
+      "description_length": 18,
+      "colormap": {
+        "program": "apply_colormap:0-0;2-4;3-6;4-0;6-0",
+        "inferred_joint_map": [
+          [
+            0,
+            0
+          ],
+          [
+            2,
+            4
+          ],
+          [
+            3,
+            6
+          ],
+          [
+            4,
+            0
+          ],
+          [
+            6,
+            0
+          ]
+        ],
+        "disjoint_per_demo_color_support": true,
+        "per_demo_maps": [
+          {
+            "map": [
+              [
+                0,
+                0
+              ],
+              [
+                3,
+                6
+              ],
+              [
+                6,
+                0
+              ]
+            ],
+            "input_colors": [
+              0,
+              3,
+              6
+            ],
+            "output_colors": [
+              0,
+              6
+            ],
+            "singletons": [
+              [
+                6,
+                0,
+                6
+              ]
+            ],
+            "corner_nonzero": [
+              [
+                "bl",
+                6
+              ]
+            ]
+          },
+          {
+            "map": [
+              [
+                0,
+                0
+              ],
+              [
+                2,
+                4
+              ],
+              [
+                4,
+                0
+              ]
+            ],
+            "input_colors": [
+              0,
+              2,
+              4
+            ],
+            "output_colors": [
+              0,
+              4
+            ],
+            "singletons": [
+              [
+                6,
+                0,
+                4
+              ]
+            ],
+            "corner_nonzero": [
+              [
+                "bl",
+                4
+              ]
+            ]
+          }
+        ],
+        "test_unseen_input_colors": [
+          8
+        ],
+        "role_collision_colors": [
+          2
+        ],
+        "test_replay": [
+          {
+            "pred_equals_gt": false,
+            "input_colors": [
+              0,
+              2,
+              8
+            ],
+            "gt_colors": [
+              0,
+              2
+            ],
+            "pred_colors": [
+              0,
+              4,
+              8
+            ],
+            "singletons": [
+              [
+                6,
+                0,
+                2
+              ]
+            ],
+            "corner_nonzero": [
+              [
+                "bl",
+                2
+              ]
+            ],
+            "unseen_input_colors": [
+              8
+            ]
+          }
+        ],
+        "constraint_failure": "joint_map_is_union_of_disjoint_per_demo_palettes+test_introduces_unseen_input_colors+color_plays_marker_role_in_one_pair_and_blob_role_in_another"
+      }
+    },
+    {
+      "task_id": "b1948b0a",
+      "solved": true,
+      "failure_category": "solved",
+      "program": "apply_colormap:6-2;7-7",
+      "family": "apply_colormap",
+      "n_train": 3,
+      "n_test": 1,
+      "ttf": 0.004876400111243129,
+      "nodes_expanded": 145,
+      "description_length": 12,
+      "colormap": {
+        "program": "apply_colormap:6-2;7-7",
+        "inferred_joint_map": [
+          [
+            6,
+            2
+          ],
+          [
+            7,
+            7
+          ]
+        ],
+        "disjoint_per_demo_color_support": false,
+        "per_demo_maps": [
+          {
+            "map": [
+              [
+                6,
+                2
+              ],
+              [
+                7,
+                7
+              ]
+            ],
+            "input_colors": [
+              6,
+              7
+            ],
+            "output_colors": [
+              2,
+              7
+            ],
+            "singletons": [],
+            "corner_nonzero": [
+              [
+                "tl",
+                7
+              ],
+              [
+                "tr",
+                6
+              ],
+              [
+                "bl",
+                6
+              ],
+              [
+                "br",
+                7
+              ]
+            ]
+          },
+          {
+            "map": [
+              [
+                6,
+                2
+              ],
+              [
+                7,
+                7
+              ]
+            ],
+            "input_colors": [
+              6,
+              7
+            ],
+            "output_colors": [
+              2,
+              7
+            ],
+            "singletons": [],
+            "corner_nonzero": [
+              [
+                "tl",
+                6
+              ],
+              [
+                "tr",
+                6
+              ],
+              [
+                "bl",
+                7
+              ],
+              [
+                "br",
+                7
+              ]
+            ]
+          },
+          {
+            "map": [
+              [
+                6,
+                2
+              ],
+              [
+                7,
+                7
+              ]
+            ],
+            "input_colors": [
+              6,
+              7
+            ],
+            "output_colors": [
+              2,
+              7
+            ],
+            "singletons": [],
+            "corner_nonzero": [
+              [
+                "tl",
+                7
+              ],
+              [
+                "tr",
+                6
+              ],
+              [
+                "bl",
+                7
+              ],
+              [
+                "br",
+                7
+              ]
+            ]
+          }
+        ],
+        "test_unseen_input_colors": [],
+        "role_collision_colors": [],
+        "test_replay": [
+          {
+            "pred_equals_gt": true,
+            "input_colors": [
+              6,
+              7
+            ],
+            "gt_colors": [
+              2,
+              7
+            ],
+            "pred_colors": [
+              2,
+              7
+            ],
+            "singletons": [],
+            "corner_nonzero": [
+              [
+                "tl",
+                6
+              ],
+              [
+                "tr",
+                6
+              ],
+              [
+                "bl",
+                7
+              ],
+              [
+                "br",
+                6
+              ]
+            ],
+            "unseen_input_colors": []
+          }
+        ],
+        "constraint_failure": "constrained_and_transferred"
+      }
+    },
+    {
+      "task_id": "be03b35f",
+      "solved": true,
+      "failure_category": "solved",
+      "program": "left_half | top_half | rot270",
+      "family": "left_half",
+      "n_train": 3,
+      "n_test": 1,
+      "ttf": 0.02381410007365048,
+      "nodes_expanded": 150,
+      "description_length": 8,
+      "colormap": null,
+      "constraint_failure": "constrained_and_transferred"
+    },
+    {
+      "task_id": "c59eb873",
+      "solved": true,
+      "failure_category": "solved",
+      "program": "upscale:2",
+      "family": "upscale",
+      "n_train": 3,
+      "n_test": 1,
+      "ttf": 0.01107029989361763,
+      "nodes_expanded": 17,
+      "description_length": 3,
+      "colormap": null,
+      "constraint_failure": "constrained_and_transferred"
+    },
+    {
+      "task_id": "c8f0f002",
+      "solved": true,
+      "failure_category": "solved",
+      "program": "apply_colormap:1-1;7-5;8-8",
+      "family": "apply_colormap",
+      "n_train": 3,
+      "n_test": 1,
+      "ttf": 0.006689499830827117,
+      "nodes_expanded": 108,
+      "description_length": 14,
+      "colormap": {
+        "program": "apply_colormap:1-1;7-5;8-8",
+        "inferred_joint_map": [
+          [
+            1,
+            1
+          ],
+          [
+            7,
+            5
+          ],
+          [
+            8,
+            8
+          ]
+        ],
+        "disjoint_per_demo_color_support": false,
+        "per_demo_maps": [
+          {
+            "map": [
+              [
+                1,
+                1
+              ],
+              [
+                7,
+                5
+              ],
+              [
+                8,
+                8
+              ]
+            ],
+            "input_colors": [
+              1,
+              7,
+              8
+            ],
+            "output_colors": [
+              1,
+              5,
+              8
+            ],
+            "singletons": [],
+            "corner_nonzero": [
+              [
+                "tl",
+                7
+              ],
+              [
+                "tr",
+                1
+              ],
+              [
+                "bl",
+                7
+              ],
+              [
+                "br",
+                7
+              ]
+            ]
+          },
+          {
+            "map": [
+              [
+                1,
+                1
+              ],
+              [
+                7,
+                5
+              ],
+              [
+                8,
+                8
+              ]
+            ],
+            "input_colors": [
+              1,
+              7,
+              8
+            ],
+            "output_colors": [
+              1,
+              5,
+              8
+            ],
+            "singletons": [],
+            "corner_nonzero": [
+              [
+                "tl",
+                1
+              ],
+              [
+                "tr",
+                8
+              ],
+              [
+                "bl",
+                7
+              ],
+              [
+                "br",
+                8
+              ]
+            ]
+          },
+          {
+            "map": [
+              [
+                1,
+                1
+              ],
+              [
+                7,
+                5
+              ],
+              [
+                8,
+                8
+              ]
+            ],
+            "input_colors": [
+              1,
+              7,
+              8
+            ],
+            "output_colors": [
+              1,
+              5,
+              8
+            ],
+            "singletons": [],
+            "corner_nonzero": [
+              [
+                "tl",
+                1
+              ],
+              [
+                "tr",
+                1
+              ],
+              [
+                "bl",
+                7
+              ],
+              [
+                "br",
+                7
+              ]
+            ]
+          }
+        ],
+        "test_unseen_input_colors": [],
+        "role_collision_colors": [],
+        "test_replay": [
+          {
+            "pred_equals_gt": true,
+            "input_colors": [
+              1,
+              7,
+              8
+            ],
+            "gt_colors": [
+              1,
+              5,
+              8
+            ],
+            "pred_colors": [
+              1,
+              5,
+              8
+            ],
+            "singletons": [],
+            "corner_nonzero": [
+              [
+                "tl",
+                1
+              ],
+              [
+                "tr",
+                7
+              ],
+              [
+                "bl",
+                8
+              ],
+              [
+                "br",
+                8
+              ]
+            ],
+            "unseen_input_colors": []
+          }
+        ],
+        "constraint_failure": "constrained_and_transferred"
+      }
+    },
+    {
+      "task_id": "d511f180",
+      "solved": true,
+      "failure_category": "solved",
+      "program": "apply_colormap:1-1;2-2;3-3;4-4;5-8;6-6;7-7;8-5;9-9",
+      "family": "apply_colormap",
+      "n_train": 3,
+      "n_test": 1,
+      "ttf": 0.04286409984342754,
+      "nodes_expanded": 10,
+      "description_length": 26,
+      "colormap": {
+        "program": "apply_colormap:1-1;2-2;3-3;4-4;5-8;6-6;7-7;8-5;9-9",
+        "inferred_joint_map": [
+          [
+            1,
+            1
+          ],
+          [
+            2,
+            2
+          ],
+          [
+            3,
+            3
+          ],
+          [
+            4,
+            4
+          ],
+          [
+            5,
+            8
+          ],
+          [
+            6,
+            6
+          ],
+          [
+            7,
+            7
+          ],
+          [
+            8,
+            5
+          ],
+          [
+            9,
+            9
+          ]
+        ],
+        "disjoint_per_demo_color_support": false,
+        "per_demo_maps": [
+          {
+            "map": [
+              [
+                1,
+                1
+              ],
+              [
+                2,
+                2
+              ],
+              [
+                3,
+                3
+              ],
+              [
+                4,
+                4
+              ],
+              [
+                5,
+                8
+              ],
+              [
+                8,
+                5
+              ],
+              [
+                9,
+                9
+              ]
+            ],
+            "input_colors": [
+              1,
+              2,
+              3,
+              4,
+              5,
+              8,
+              9
+            ],
+            "output_colors": [
+              1,
+              2,
+              3,
+              4,
+              5,
+              8,
+              9
+            ],
+            "singletons": [],
+            "corner_nonzero": [
+              [
+                "tl",
+                3
+              ],
+              [
+                "tr",
+                1
+              ],
+              [
+                "bl",
+                2
+              ],
+              [
+                "br",
+                9
+              ]
+            ]
+          },
+          {
+            "map": [
+              [
+                1,
+                1
+              ],
+              [
+                2,
+                2
+              ],
+              [
+                3,
+                3
+              ],
+              [
+                4,
+                4
+              ],
+              [
+                5,
+                8
+              ],
+              [
+                6,
+                6
+              ],
+              [
+                7,
+                7
+              ],
+              [
+                8,
+                5
+              ],
+              [
+                9,
+                9
+              ]
+            ],
+            "input_colors": [
+              1,
+              2,
+              3,
+              4,
+              5,
+              6,
+              7,
+              8,
+              9
+            ],
+            "output_colors": [
+              1,
+              2,
+              3,
+              4,
+              5,
+              6,
+              7,
+              8,
+              9
+            ],
+            "singletons": [],
+            "corner_nonzero": [
+              [
+                "tl",
+                2
+              ],
+              [
+                "tr",
+                8
+              ],
+              [
+                "bl",
+                6
+              ],
+              [
+                "br",
+                3
+              ]
+            ]
+          },
+          {
+            "map": [
+              [
+                2,
+                2
+              ],
+              [
+                3,
+                3
+              ],
+              [
+                5,
+                8
+              ],
+              [
+                6,
+                6
+              ],
+              [
+                7,
+                7
+              ],
+              [
+                8,
+                5
+              ]
+            ],
+            "input_colors": [
+              2,
+              3,
+              5,
+              6,
+              7,
+              8
+            ],
+            "output_colors": [
+              2,
+              3,
+              5,
+              6,
+              7,
+              8
+            ],
+            "singletons": [],
+            "corner_nonzero": [
+              [
+                "tl",
+                6
+              ],
+              [
+                "tr",
+                3
+              ],
+              [
+                "bl",
+                8
+              ],
+              [
+                "br",
+                2
+              ]
+            ]
+          }
+        ],
+        "test_unseen_input_colors": [],
+        "role_collision_colors": [],
+        "test_replay": [
+          {
+            "pred_equals_gt": true,
+            "input_colors": [
+              1,
+              3,
+              4,
+              5,
+              6,
+              7,
+              8,
+              9
+            ],
+            "gt_colors": [
+              1,
+              3,
+              4,
+              5,
+              6,
+              7,
+              8,
+              9
+            ],
+            "pred_colors": [
+              1,
+              3,
+              4,
+              5,
+              6,
+              7,
+              8,
+              9
+            ],
+            "singletons": [],
+            "corner_nonzero": [
+              [
+                "tl",
+                8
+              ],
+              [
+                "tr",
+                5
+              ],
+              [
+                "bl",
+                6
+              ],
+              [
+                "br",
+                8
+              ]
+            ],
+            "unseen_input_colors": []
+          }
+        ],
+        "constraint_failure": "constrained_and_transferred"
+      }
+    },
+    {
+      "task_id": "ed36ccf7",
+      "solved": true,
+      "failure_category": "solved",
+      "program": "rot270",
+      "family": "rot270",
+      "n_train": 4,
+      "n_test": 1,
+      "ttf": 0.005491300020366907,
+      "nodes_expanded": 4,
+      "description_length": 2,
+      "colormap": null,
+      "constraint_failure": "constrained_and_transferred"
+    },
+    {
+      "task_id": "f25fbde4",
+      "solved": true,
+      "failure_category": "solved",
+      "program": "crop_fg:0 | upscale:2",
+      "family": "crop_fg",
+      "n_train": 3,
+      "n_test": 1,
+      "ttf": 0.04881539987400174,
+      "nodes_expanded": 100,
+      "description_length": 6,
+      "colormap": null,
+      "constraint_failure": "constrained_and_transferred"
+    }
+  ]
+}

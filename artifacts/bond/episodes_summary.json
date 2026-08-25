@@ -1,0 +1,77 @@
+{
+  "n_episodes": 62,
+  "n_sft": 62,
+  "kinds": {
+    "search_strategy": 15,
+    "success_trajectory": 15,
+    "direct_answer": 21,
+    "abstraction": 4,
+    "competing_hypotheses": 6,
+    "underconstraint": 1
+  },
+  "task_ids": [
+    "00576224",
+    "007bbfb7",
+    "009d5c81",
+    "00d62c1b",
+    "00dbd492",
+    "017c7c7b",
+    "025d127b",
+    "03560426",
+    "045e512c",
+    "0520fde7",
+    "05269061",
+    "05a7bcf2",
+    "05f2a901",
+    "0607ce86",
+    "0692e18c",
+    "0d3d703e",
+    "1cf80156",
+    "2013d3e2",
+    "28bf18c6",
+    "3906de3d",
+    "3c9b0459",
+    "60c09cac",
+    "6150a2bd",
+    "67a3c6ac",
+    "68b16354",
+    "9172f3a0",
+    "9dfd6313",
+    "a416b8f3",
+    "a740d043",
+    "aabf363d",
+    "b1948b0a",
+    "be03b35f",
+    "c59eb873",
+    "c8f0f002",
+    "d511f180",
+    "ed36ccf7",
+    "f25fbde4"
+  ],
+  "sft_sha256": "1f51a6f961494f2cc16d9ce2b089cb23845cb19489e0d72956fab213d3ea8ab6",
+  "action_schema": {
+    "actions": [
+      "observe",
+      "inspect",
+      "apply",
+      "residual",
+      "hypothesize",
+      "commit",
+      "catalog",
+      "answer"
+    ],
+    "inspect_targets": [
+      "colors",
+      "shapes",
+      "objects",
+      "catalog",
+      "underconstraint"
+    ],
+    "program": "serialized DSL, ops joined by ' | ', depth <= 3",
+    "verifier": "joint pixel residual + gold-free underconstraint flags",
+    "hidden": [
+      "test_output",
+      "public_evaluation"
+    ]
+  }
+}

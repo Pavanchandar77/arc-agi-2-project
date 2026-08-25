@@ -1,0 +1,55 @@
+{
+  "status": "frozen",
+  "conclusions": [
+    {
+      "id": "G_is_useful_search_control",
+      "statement": "G is useful search control.",
+      "meaning": "Continuation-state signatures reduce expansions and make exhaustive search over the bounded DSL/depth reachable. On the held-out 40-task slice, G decided every task (4 expressible at B0, 36 inexpressible, 0 still truncated). Unique/raw fell from 0.68 at B0 to 0.40 at B3."
+    },
+    {
+      "id": "F_has_not_reduced_search",
+      "statement": "F has not yet demonstrated search reduction.",
+      "meaning": "Residual-domain operator ordering did not reduce expansions versus A under matched budgets. On the 40-task ladder F left 26/40 truncated at B3 while A exhausted more of the (smaller) pixel-only tree. Object residuals remain too noisy to steer the finite DSL."
+    },
+    {
+      "id": "bounded_language_is_shallow",
+      "statement": "The current bounded language is shallow and expressively limited.",
+      "meaning": "Frozen language: depth 3, 36 ops/node, closed DSL. Raising G from 200 nodes / 0.45s to 25,000 nodes / 40s added zero solutions on the held-out slice. Language ceiling among exhausted G tasks: 4/40 = 10%. solved_only_at_higher_budget = 0. The 2.5% full-training G score is a language ceiling, not a search-truncation ceiling."
+    },
+    {
+      "id": "joint_consistency_not_sufficient",
+      "statement": "Joint demonstration consistency is necessary but not sufficient for test transfer.",
+      "meaning": "A candidate is eligible only after exact replay on every demonstration. Of 26 jointly verified programs on the 1,000-task G run, 25 transferred and 1 did not (aabf363d). Joint pixel exactness does not imply the demonstrations uniquely determine the test rule."
+    },
+    {
+      "id": "colormap_misses_role_relative_semantics",
+      "statement": "The failed transfer exposes role-relative semantics that the current global colormap representation does not encode.",
+      "meaning": "aabf363d: a bottom-left singleton is a marker color; the blob is recolored to that marker; the marker is erased. The accepted map apply_colormap:0-0;2-4;3-6;4-0;6-0 is the union of disjoint per-demo palettes. Test introduces unseen blob color 8; color 2 is blob in demo 2 and marker at test. A global color permutation cannot represent marker-vs-blob roles."
+    }
+  ],
+  "next_change_policy": {
+    "allowed": [
+      "training-only abstractions with exact definitions, provenance, and held-out transfer logs (H)",
+      "a deeper or larger frozen DSL, then freeze it again before search changes"
+    ],
+    "required_after_change": [
+      "rerun the same A/F/G budget ladder",
+      "repeat language-versus-search separability",
+      "recompute the five conclusions from new evidence; do not edit them in place"
+    ],
+    "forbidden_until_then": [
+      "Qwen or other learned proposal models",
+      "arbitrary or unmeasured operators",
+      "new search heuristics",
+      "calling a heuristic bound admissible",
+      "using public evaluation as a tuning set",
+      "hard-coding individual ARC tasks"
+    ]
+  },
+  "evidence": {
+    "full_training_G": "artifacts/hrps_phase1_G_training/summary.json",
+    "separability": "artifacts/hrps_separability/summary.json",
+    "joint_demo_analysis": "artifacts/hrps_separability/joint_demo_analysis.json",
+    "failed_transfer_task": "aabf363d"
+  }
+}

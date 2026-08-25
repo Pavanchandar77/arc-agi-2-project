@@ -1,0 +1,111 @@
+{
+  "n": 7,
+  "abstractions": [
+    {
+      "name": "abs_left_half_top_half",
+      "body": "left_half | top_half",
+      "n_ops": 2,
+      "cost": 4,
+      "provenance": [
+        "2013d3e2",
+        "be03b35f"
+      ],
+      "kind_inventory": "learned",
+      "kind_execution": "exact",
+      "in_types": [
+        "Grid"
+      ],
+      "out_type": "Grid"
+    },
+    {
+      "name": "abs_crop_fg_0_left_half",
+      "body": "crop_fg:0 | left_half",
+      "n_ops": 2,
+      "cost": 4,
+      "provenance": [
+        "2013d3e2"
+      ],
+      "kind_inventory": "learned",
+      "kind_execution": "exact",
+      "in_types": [
+        "Grid"
+      ],
+      "out_type": "Grid"
+    },
+    {
+      "name": "abs_crop_fg_0_left_half_top_half",
+      "body": "crop_fg:0 | left_half | top_half",
+      "n_ops": 3,
+      "cost": 5,
+      "provenance": [
+        "2013d3e2"
+      ],
+      "kind_inventory": "learned",
+      "kind_execution": "exact",
+      "in_types": [
+        "Grid"
+      ],
+      "out_type": "Grid"
+    },
+    {
+      "name": "abs_crop_fg_0_tile_1x2",
+      "body": "crop_fg:0 | tile:1x2",
+      "n_ops": 2,
+      "cost": 4,
+      "provenance": [
+        "28bf18c6"
+      ],
+      "kind_inventory": "learned",
+      "kind_execution": "exact",
+      "in_types": [
+        "Grid"
+      ],
+      "out_type": "Grid"
+    },
+    {
+      "name": "abs_crop_fg_0_upscale_2",
+      "body": "crop_fg:0 | upscale:2",
+      "n_ops": 2,
+      "cost": 4,
+      "provenance": [
+        "f25fbde4"
+      ],
+      "kind_inventory": "learned",
+      "kind_execution": "exact",
+      "in_types": [
+        "Grid"
+      ],
+      "out_type": "Grid"
+    },
+    {
+      "name": "abs_left_half_top_half_rot270",
+      "body": "left_half | top_half | rot270",
+      "n_ops": 3,
+      "cost": 5,
+      "provenance": [
+        "be03b35f"
+      ],
+      "kind_inventory": "learned",
+      "kind_execution": "exact",
+      "in_types": [
+        "Grid"
+      ],
+      "out_type": "Grid"
+    },
+    {
+      "name": "abs_top_half_rot270",
+      "body": "top_half | rot270",
+      "n_ops": 2,
+      "cost": 4,
+      "provenance": [
+        "be03b35f"
+      ],
+      "kind_inventory": "learned",
+      "kind_execution": "exact",
+      "in_types": [
+        "Grid"
+      ],
+      "out_type": "Grid"
+    }
+  ]
+}

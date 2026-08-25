@@ -1,0 +1,577 @@
+{
+  "architecture": {
+    "pipeline": [
+      "ARC task",
+      "parser",
+      "typed symbolic representation",
+      "joint residual",
+      "candidate operations",
+      "exact executor",
+      "joint consistency",
+      "continuation-safe signature",
+      "admissible remaining-cost bound",
+      "budgeted best-first / branch-and-bound",
+      "exact replay + pass@2"
+    ],
+    "stage": "G",
+    "stage_config": {
+      "stage": "G",
+      "use_geom": true,
+      "use_color": true,
+      "use_size": true,
+      "residual_factorization": true,
+      "continuation_dedup": true,
+      "score_joint": true,
+      "require_joint_solution": true,
+      "object_specs": [
+        "4c_zero",
+        "4c_border",
+        "8c_zero",
+        "8c_border",
+        "8a_zero",
+        "8a_border",
+        "4a_zero"
+      ]
+    },
+    "component_kinds": {
+      "grid_type": "exact",
+      "task_loader": "exact",
+      "pixel_equality": "exact",
+      "executor": "exact",
+      "program_replay": "exact",
+      "program_serialization": "exact",
+      "description_length": "exact",
+      "joint_pixel_residual": "exact",
+      "joint_demonstration_verifier": "exact",
+      "connected_components_4": "exact",
+      "connected_components_8": "exact",
+      "color_agnostic_components": "exact",
+      "object_residual": "sound_but_incomplete",
+      "relation_residual": "sound_but_incomplete",
+      "shape_control_residual": "exact",
+      "multi_representation_bank": "sound_but_incomplete",
+      "colormap_generator": "exact",
+      "residual_operator_prioritization": "heuristic",
+      "continuation_signature": "sound_but_incomplete",
+      "signature_dedup": "sound_but_incomplete",
+      "admissible_remaining_cost_bound": "exact",
+      "search_frontier_order": "heuristic",
+      "failure_taxonomy": "heuristic",
+      "abstraction_library": "learned",
+      "qwen_proposals": "learned"
+    },
+    "implemented_operators": [
+      {
+        "name": "anti_transpose",
+        "in_types": [
+          "Grid"
+        ],
+        "out_type": "Grid",
+        "frame_effect": "reflect",
+        "cost": 2,
+        "kind": "exact",
+        "preconditions": "any grid"
+      },
+      {
+        "name": "apply_colormap",
+        "in_types": [
+          "Grid",
+          "ColorMap"
+        ],
+        "out_type": "Grid",
+        "frame_effect": "recolor",
+        "cost": 8,
+        "kind": "exact",
+        "preconditions": "mapping is a total function on observed colors"
+      },
+      {
+        "name": "bottom_half",
+        "in_types": [
+          "Grid"
+        ],
+        "out_type": "Grid",
+        "frame_effect": "crop",
+        "cost": 3,
+        "kind": "exact",
+        "preconditions": "height>=2"
+      },
+      {
+        "name": "crop_fg",
+        "in_types": [
+          "Grid",
+          "Bg"
+        ],
+        "out_type": "Grid",
+        "frame_effect": "crop",
+        "cost": 3,
+        "kind": "exact",
+        "preconditions": "some non-bg cell"
+      },
+      {
+        "name": "downscale",
+        "in_types": [
+          "Grid",
+          "Int"
+        ],
+        "out_type": "Grid",
+        "frame_effect": "resize",
+        "cost": 3,
+        "kind": "exact",
+        "preconditions": "dims divisible by k, uniform blocks"
+      },
+      {
+        "name": "fill_holes",
+        "in_types": [
+          "Grid",
+          "Bg"
+        ],
+        "out_type": "Grid",
+        "frame_effect": "object",
+        "cost": 4,
+        "kind": "exact",
+        "preconditions": "any grid"
+      },
+      {
+        "name": "flip_h",
+        "in_types": [
+          "Grid"
+        ],
+        "out_type": "Grid",
+        "frame_effect": "reflect",
+        "cost": 2,
+        "kind": "exact",
+        "preconditions": "any grid"
+      },
+      {
+        "name": "flip_v",
+        "in_types": [
+          "Grid"
+        ],
+        "out_type": "Grid",
+        "frame_effect": "reflect",
+        "cost": 2,
+        "kind": "exact",
+        "preconditions": "any grid"
+      },
+      {
+        "name": "gravity",
+        "in_types": [
+          "Grid",
+          "Int",
+          "Bg"
+        ],
+        "out_type": "Grid",
+        "frame_effect": "object",
+        "cost": 4,
+        "kind": "exact",
+        "preconditions": "dir in {0,1,2,3}"
+      },
+      {
+        "name": "isolate_largest",
+        "in_types": [
+          "Grid",
+          "Connectivity",
+          "Bool",
+          "Bg"
+        ],
+        "out_type": "Grid",
+        "frame_effect": "object",
+        "cost": 5,
+        "kind": "exact",
+        "preconditions": "at least one object"
+      },
+      {
+        "name": "isolate_smallest",
+        "in_types": [
+          "Grid",
+          "Connectivity",
+          "Bool",
+          "Bg"
+        ],
+        "out_type": "Grid",
+        "frame_effect": "object",
+        "cost": 5,
+        "kind": "exact",
+        "preconditions": "at least one object"
+      },
+      {
+        "name": "keep_color",
+        "in_types": [
+          "Grid",
+          "Color",
+          "Bg"
+        ],
+        "out_type": "Grid",
+        "frame_effect": "filter",
+        "cost": 5,
+        "kind": "exact",
+        "preconditions": "color present"
+      },
+      {
+        "name": "left_half",
+        "in_types": [
+          "Grid"
+        ],
+        "out_type": "Grid",
+        "frame_effect": "crop",
+        "cost": 3,
+        "kind": "exact",
+        "preconditions": "width>=2"
+      },
+      {
+        "name": "outline",
+        "in_types": [
+          "Grid",
+          "Bg"
+        ],
+        "out_type": "Grid",
+        "frame_effect": "object",
+        "cost": 4,
+        "kind": "exact",
+        "preconditions": "any grid"
+      },
+      {
+        "name": "recolor",
+        "in_types": [
+          "Grid",
+          "Color",
+          "Color"
+        ],
+        "out_type": "Grid",
+        "frame_effect": "recolor",
+        "cost": 6,
+        "kind": "exact",
+        "preconditions": "src != dst"
+      },
+      {
+        "name": "right_half",
+        "in_types": [
+          "Grid"
+        ],
+        "out_type": "Grid",
+        "frame_effect": "crop",
+        "cost": 3,
+        "kind": "exact",
+        "preconditions": "width>=2"
+      },
+      {
+        "name": "rot180",
+        "in_types": [
+          "Grid"
+        ],
+        "out_type": "Grid",
+        "frame_effect": "rotate",
+        "cost": 2,
+        "kind": "exact",
+        "preconditions": "any grid"
+      },
+      {
+        "name": "rot270",
+        "in_types": [
+          "Grid"
+        ],
+        "out_type": "Grid",
+        "frame_effect": "rotate",
+        "cost": 2,
+        "kind": "exact",
+        "preconditions": "any grid"
+      },
+      {
+        "name": "rot90",
+        "in_types": [
+          "Grid"
+        ],
+        "out_type": "Grid",
+        "frame_effect": "rotate",
+        "cost": 2,
+        "kind": "exact",
+        "preconditions": "any grid"
+      },
+      {
+        "name": "swap_colors",
+        "in_types": [
+          "Grid",
+          "Color",
+          "Color"
+        ],
+        "out_type": "Grid",
+        "frame_effect": "recolor",
+        "cost": 6,
+        "kind": "exact",
+        "preconditions": "a < b"
+      },
+      {
+        "name": "tile",
+        "in_types": [
+          "Grid",
+          "Int",
+          "Int"
+        ],
+        "out_type": "Grid",
+        "frame_effect": "resize",
+        "cost": 3,
+        "kind": "exact",
+        "preconditions": "nr*h<=30 and nc*w<=30"
+      },
+      {
+        "name": "top_half",
+        "in_types": [
+          "Grid"
+        ],
+        "out_type": "Grid",
+        "frame_effect": "crop",
+        "cost": 3,
+        "kind": "exact",
+        "preconditions": "height>=2"
+      },
+      {
+        "name": "transpose",
+        "in_types": [
+          "Grid"
+        ],
+        "out_type": "Grid",
+        "frame_effect": "reflect",
+        "cost": 2,
+        "kind": "exact",
+        "preconditions": "any grid"
+      },
+      {
+        "name": "upscale",
+        "in_types": [
+          "Grid",
+          "Int"
+        ],
+        "out_type": "Grid",
+        "frame_effect": "resize",
+        "cost": 3,
+        "kind": "exact",
+        "preconditions": "k in {2,3}, scaled dim<=30"
+      }
+    ],
+    "not_in_phase_1": [
+      "training-only abstraction library (H)",
+      "Qwen proposal model (I)"
+    ]
+  },
+  "budget": {
+    "max_depth": 3,
+    "max_nodes": 400,
+    "max_seconds": 1.0,
+    "max_frontier": 4000
+  },
+  "split": "training",
+  "wall_clock_sec": 38.5766,
+  "summary": {
+    "tasks_evaluated": 50,
+    "solved": 1,
+    "solve_rate": 0.02,
+    "runtime_sec_total": 37.8346,
+    "runtime_sec_mean": 0.756693,
+    "runtime_sec_median": 0.898326,
+    "nodes_expanded_mean": 299.14,
+    "nodes_expanded_median": 400.0,
+    "nodes_expanded_max": 400,
+    "nodes_generated_mean": 1972.44,
+    "duplicate_states_mean": 828.08,
+    "unique_states_mean": 1145.36,
+    "time_to_first_exact_mean": 0.010694,
+    "n_with_exact_demo_solution": 1,
+    "failure_taxonomy": {
+      "search_explosion": 26,
+      "timeout": 23,
+      "solved": 1
+    },
+    "representation_instability_mean": 4.22,
+    "representation_instability_median": 2.0,
+    "most_expensive_by_expansions": [
+      {
+        "task_id": "00576224",
+        "expanded": 400,
+        "generated": 1433,
+        "runtime": 0.07780309999361634,
+        "failure": "search_explosion",
+        "area": 36,
+        "instability": 1.0
+      },
+      {
+        "task_id": "007bbfb7",
+        "expanded": 400,
+        "generated": 2159,
+        "runtime": 0.2990637000184506,
+        "failure": "search_explosion",
+        "area": 81,
+        "instability": 2.0
+      },
+      {
+        "task_id": "009d5c81",
+        "expanded": 400,
+        "generated": 3432,
+        "runtime": 0.9508966000285,
+        "failure": "search_explosion",
+        "area": 196,
+        "instability": 8.0
+      },
+      {
+        "task_id": "00d62c1b",
+        "expanded": 400,
+        "generated": 2158,
+        "runtime": 0.5313562999945134,
+        "failure": "search_explosion",
+        "area": 400,
+        "instability": 9.0
+      },
+      {
+        "task_id": "00dbd492",
+        "expanded": 400,
+        "generated": 3886,
+        "runtime": 0.6431792001239955,
+        "failure": "search_explosion",
+        "area": 225,
+        "instability": 2.0
+      },
+      {
+        "task_id": "0520fde7",
+        "expanded": 400,
+        "generated": 1382,
+        "runtime": 0.7073202000465244,
+        "failure": "search_explosion",
+        "area": 21,
+        "instability": 2.0
+      },
+      {
+        "task_id": "05269061",
+        "expanded": 400,
+        "generated": 700,
+        "runtime": 0.1591161999385804,
+        "failure": "search_explosion",
+        "area": 49,
+        "instability": 9.0
+      },
+      {
+        "task_id": "05f2a901",
+        "expanded": 400,
+        "generated": 2588,
+        "runtime": 0.8661665001418442,
+        "failure": "search_explosion",
+        "area": 126,
+        "instability": 0.0
+      },
+      {
+        "task_id": "0692e18c",
+        "expanded": 400,
+        "generated": 3790,
+        "runtime": 0.7896076000761241,
+        "failure": "search_explosion",
+        "area": 81,
+        "instability": 2.0
+      },
+      {
+        "task_id": "08ed6ac7",
+        "expanded": 400,
+        "generated": 2826,
+        "runtime": 0.5131740998476744,
+        "failure": "search_explosion",
+        "area": 81,
+        "instability": 0.0
+      },
+      {
+        "task_id": "09629e4f",
+        "expanded": 400,
+        "generated": 1224,
+        "runtime": 0.601126000052318,
+        "failure": "search_explosion",
+        "area": 121,
+        "instability": 3.0
+      },
+      {
+        "task_id": "0b148d64",
+        "expanded": 400,
+        "generated": 962,
+        "runtime": 0.34634710010141134,
+        "failure": "search_explosion",
+        "area": 441,
+        "instability": 22.0
+      },
+      {
+        "task_id": "0bb8deee",
+        "expanded": 400,
+        "generated": 1030,
+        "runtime": 0.25677670002914965,
+        "failure": "search_explosion",
+        "area": 195,
+        "instability": 2.0
+      },
+      {
+        "task_id": "0becf7df",
+        "expanded": 400,
+        "generated": 2118,
+        "runtime": 0.4949485999532044,
+        "failure": "search_explosion",
+        "area": 100,
+        "instability": 3.0
+      },
+      {
+        "task_id": "0c786b71",
+        "expanded": 400,
+        "generated": 1675,
+        "runtime": 0.3278837001416832,
+        "failure": "search_explosion",
+        "area": 48,
+        "instability": 4.0
+      }
+    ],
+    "slowest_tasks": [
+      {
+        "task_id": "11852cab",
+        "runtime": 1.253133999882266,
+        "failure": "timeout"
+      },
+      {
+        "task_id": "103eff5b",
+        "runtime": 1.0956001998856664,
+        "failure": "timeout"
+      },
+      {
+        "task_id": "017c7c7b",
+        "runtime": 1.082716500153765,
+        "failure": "timeout"
+      },
+      {
+        "task_id": "03560426",
+        "runtime": 1.0413257000036538,
+        "failure": "timeout"
+      },
+      {
+        "task_id": "045e512c",
+        "runtime": 1.0341266999021173,
+        "failure": "timeout"
+      },
+      {
+        "task_id": "0f63c0b9",
+        "runtime": 1.0236223998945206,
+        "failure": "timeout"
+      },
+      {
+        "task_id": "09c534e7",
+        "runtime": 1.0219209999777377,
+        "failure": "timeout"
+      },
+      {
+        "task_id": "0962bcdd",
+        "runtime": 1.0139215998351574,
+        "failure": "timeout"
+      },
+      {
+        "task_id": "025d127b",
+        "runtime": 1.0121716998983175,
+        "failure": "timeout"
+      },
+      {
+        "task_id": "06df4c85",
+        "runtime": 1.0086236000061035,
+        "failure": "timeout"
+      }
+    ]
+  },
+  "highest_leverage_next_bottleneck": "search_explosion (n=26): search growth under the finite DSL; measure F vs A node counts before adding operators"
+}

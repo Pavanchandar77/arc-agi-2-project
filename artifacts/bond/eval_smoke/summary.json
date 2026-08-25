@@ -1,0 +1,131 @@
+{
+  "systems": [
+    "base_direct",
+    "base_hrps",
+    "bond_direct",
+    "bond_hrps"
+  ],
+  "n_tasks": 1,
+  "task_ids": [
+    "synth_rot180"
+  ],
+  "budget": {
+    "temperature": 0.0,
+    "max_tokens": 64,
+    "max_calls": 8,
+    "max_seconds": 5
+  },
+  "base_model": "scripted",
+  "bond_model": "scripted",
+  "summaries": {
+    "base_direct": {
+      "n": 1,
+      "solved": 0,
+      "solve_rate": 0.0,
+      "joint_demo_exact": 0,
+      "pass2": 0,
+      "pass2_rate": 0.0,
+      "failure_taxonomy": {
+        "direct_mismatch": 1
+      },
+      "valid_formal_action_rate_mean": 1.0,
+      "n_distinct_hypotheses_mean": 0.0,
+      "n_hypothesis_revisions_mean": 0.0,
+      "n_representation_requests_mean": 0.0,
+      "n_verifier_calls_mean": 0.0,
+      "n_contradiction_resolutions_mean": 0.0,
+      "n_model_calls_mean": 2.0,
+      "wall_clock_mean": 0.005878,
+      "n_prompt_tokens_sum": 170,
+      "n_completion_tokens_sum": 8,
+      "solved_ids": [],
+      "joint_not_transferred": []
+    },
+    "base_hrps": {
+      "n": 1,
+      "solved": 0,
+      "solve_rate": 0.0,
+      "joint_demo_exact": 0,
+      "pass2": 0,
+      "pass2_rate": 0.0,
+      "failure_taxonomy": {
+        "no_joint_program": 1
+      },
+      "valid_formal_action_rate_mean": 1.0,
+      "n_distinct_hypotheses_mean": 0.0,
+      "n_hypothesis_revisions_mean": 0.0,
+      "n_representation_requests_mean": 0.0,
+      "n_verifier_calls_mean": 8.0,
+      "n_contradiction_resolutions_mean": 0.0,
+      "n_model_calls_mean": 8.0,
+      "wall_clock_mean": 0.007967,
+      "n_prompt_tokens_sum": 1596,
+      "n_completion_tokens_sum": 4,
+      "solved_ids": [],
+      "joint_not_transferred": []
+    },
+    "bond_direct": {
+      "n": 1,
+      "solved": 1,
+      "solve_rate": 1.0,
+      "joint_demo_exact": 0,
+      "pass2": 1,
+      "pass2_rate": 1.0,
+      "failure_taxonomy": {
+        "solved": 1
+      },
+      "valid_formal_action_rate_mean": 1.0,
+      "n_distinct_hypotheses_mean": 0.0,
+      "n_hypothesis_revisions_mean": 0.0,
+      "n_representation_requests_mean": 0.0,
+      "n_verifier_calls_mean": 0.0,
+      "n_contradiction_resolutions_mean": 0.0,
+      "n_model_calls_mean": 2.0,
+      "wall_clock_mean": 0.004826,
+      "n_prompt_tokens_sum": 170,
+      "n_completion_tokens_sum": 8,
+      "solved_ids": [
+        "synth_rot180"
+      ],
+      "joint_not_transferred": []
+    },
+    "bond_hrps": {
+      "n": 1,
+      "solved": 1,
+      "solve_rate": 1.0,
+      "joint_demo_exact": 1,
+      "pass2": 1,
+      "pass2_rate": 1.0,
+      "failure_taxonomy": {
+        "solved": 1
+      },
+      "valid_formal_action_rate_mean": 1.0,
+      "n_distinct_hypotheses_mean": 1.0,
+      "n_hypothesis_revisions_mean": 0.0,
+      "n_representation_requests_mean": 1.0,
+      "n_verifier_calls_mean": 2.0,
+      "n_contradiction_resolutions_mean": 0.0,
+      "n_model_calls_mean": 4.0,
+      "wall_clock_mean": 0.003717,
+      "n_prompt_tokens_sum": 931,
+      "n_completion_tokens_sum": 9,
+      "solved_ids": [
+        "synth_rot180"
+      ],
+      "joint_not_transferred": []
+    }
+  },
+  "deltas": {
+    "claim": "learned_gain_without_extra_substrate_gain",
+    "base_direct": 0,
+    "base_hrps": 0,
+    "bond_direct": 1,
+    "bond_hrps": 1,
+    "delta_train_bond_direct_minus_base_direct": 1,
+    "delta_substrate_bond_hrps_minus_bond_direct": 0,
+    "delta_harness_base_hrps_minus_base_direct": 0,
+    "delta_full_bond_hrps_minus_base_direct": 1,
+    "criterion": "Bond succeeds when Bond+HRPS solves more held-out tasks than the unchanged foundation under matched information and compute. Strong evidence also requires Bond direct > foundation direct (learned) and Bond+HRPS > Bond direct (substrate)."
+  },
+  "bond_present": true
+}
