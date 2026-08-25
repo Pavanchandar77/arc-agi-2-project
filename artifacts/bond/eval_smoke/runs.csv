@@ -1,0 +1,5 @@
+system,task_id,solved,joint_demo_exact,pass2,failure,termination,n_model_calls,n_prompt_tokens,n_completion_tokens,n_distinct_hypotheses,n_hypothesis_revisions,n_hypothesis_rejections,n_representation_requests,n_verifier_calls,n_contradiction_resolutions,n_invalid_actions,valid_formal_action_rate,time_to_first_joint_exact,hrps_symbolic_seconds,wall_clock,peak_memory,saw_underconstraint_flags,committed_underconstrained,n_verified_candidates,n_reasoning_cycles,seed
+base_direct,synth_rot180,False,False,False,direct_mismatch,direct_done,2,160,8,0,0,0,0,0,0,0,1.0,,0.000893,0.001394,,False,False,0,2,42
+base_hrps,synth_rot180,False,False,False,no_joint_program,committed,2,378,10,0,0,0,0,2,0,0,1.0,,0.000853,0.00133,,True,True,0,2,42
+bond_direct,synth_rot180,True,False,True,solved,direct_done,2,158,8,0,0,0,0,0,0,0,1.0,,2.8e-05,0.000378,,False,False,0,2,42
+bond_hrps,synth_rot180,True,True,True,solved,committed,4,769,20,1,0,0,1,2,0,0,1.0,0.000786,0.000646,0.001137,,True,True,2,4,42

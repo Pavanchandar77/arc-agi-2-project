@@ -1,0 +1,1 @@
+Bond is a fine-tuned model-system built on an open Qwen foundation. The foundation checkpoint must be retained. Bond does not replace that license; reproduce the foundation LICENSE alongside this adapter.

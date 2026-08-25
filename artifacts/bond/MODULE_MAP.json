@@ -1,0 +1,26 @@
+{
+  "public_name": "Bond",
+  "primary_foundation": "Qwen/Qwen3.8-27B",
+  "do_not_download_27b_to_laptop": true,
+  "sft_before_rl": true,
+  "modules": {
+    "bond_model": "src.hrps.identity + src.hrps.backend",
+    "bond_schema": "src.hrps.schema",
+    "bond_overseer": "src.hrps.bond_overseer",
+    "bond_memory": "src.hrps.bond_memory",
+    "bond_tools": "src.hrps.bond_tools",
+    "bond_episode": "src.hrps.episodes",
+    "bond_train": "src.hrps.bond_train",
+    "bond_eval": "src.hrps.bond_eval",
+    "bond_manifest": "src.hrps.bond_manifest",
+    "executor": "src.hrps.dsl.replay",
+    "verifier": "src.hrps.residual.joint_residual"
+  },
+  "hierarchy": {
+    "Qwen/Qwen2.5-1.5B-Instruct": "Bond-Qwen1.5B-smoke only",
+    "Qwen/Qwen2.5-0.5B-Instruct": "laptop CPU LoRA",
+    "Qwen/Qwen3.5-4B": "small remote / CPU-inference control",
+    "Qwen/Qwen3.8-27B": "primary serious Bond foundation",
+    "deepseek-ai/DeepSeek-V4-Flash": "cluster experiment only"
+  }
+}

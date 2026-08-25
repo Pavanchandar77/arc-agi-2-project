@@ -1,0 +1,18 @@
+{
+  "status": "blocked",
+  "reason": "refuse_local_download: Qwen/Qwen3.8-27B must be trained on a remote GPU. This laptop must not download the 27B checkpoint.",
+  "output_dir": "C:\\arc-agi-2-project\\models\\bond_qwen38_27b",
+  "is_final_bond": false,
+  "pinned": {
+    "foundation": "Qwen/Qwen3.8-27B",
+    "method": "qlora",
+    "seed": 42,
+    "epochs": 1,
+    "learning_rate": 0.0002,
+    "lora_r": 16,
+    "lora_alpha": 32,
+    "lora_dropout": 0.05,
+    "max_seq_length": 4096,
+    "holdout_spec": "training[400:440]"
+  }
+}

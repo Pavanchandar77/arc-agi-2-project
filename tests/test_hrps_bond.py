@@ -2,24 +2,29 @@
 
 from __future__ import annotations
 
+import json
 from pathlib import Path
 
 import pytest
 
 from src.hrps.abstractions import Abstraction, AbstractionLibrary, set_active_library
-from src.hrps.agent import ElevationBudget, run_episode
 from src.hrps.bond import SYSTEMS, bond_deltas, bond_manifest, run_bond_eval
+from src.hrps.runner import RunnerBudget
 from src.hrps.dsl import Op
+from src.hrps.backend import hardware_gate, resolve_foundation
 from src.hrps.episodes import (
     ACTION_SCHEMA,
     assert_training_safe,
+    evaluation_task_ids,
+    file_sha256,
     generate_from_trace_row,
+    load_episode_jsonl,
     teacher_direct_episode,
     teacher_hrps_episode,
 )
 from src.hrps.env import grid_to_compact
 from src.hrps.kinds import Kind, kind_of
-from src.hrps.model import LOCAL_DEFAULT, PREFERRED_INKLING, ScriptedModel
+from src.hrps.model import ScriptedModel
 from src.hrps.separability import held_out_training_ids
 from src.hrps.task import parse_task
 
@@ -45,6 +50,46 @@ def test_bond_components_are_labeled():
     assert kind_of("bond_adapter") is Kind.LEARNED
     assert kind_of("bond_inference_controller") is Kind.EXACT
     assert "commit" in ACTION_SCHEMA["actions"]
+
+
+def test_foundations_do_not_require_inkling_for_smoke():
+    spec = resolve_foundation("qwen1.5b_smoke")
+    assert spec["hf_id"].startswith("Qwen/Qwen2.5-1.5B")
+    assert spec["is_final_bond"] is False
+    assert hardware_gate(spec) is None
+    ink = resolve_foundation("inkling_small")
+    blocked = hardware_gate(ink)
+    assert blocked is not None
+    assert "Inkling" in blocked
+
+
+def test_saved_episode_dataset_is_holdout_clean():
+    path = Path(__file__).resolve().parent.parent / "artifacts" / "bond" / "episodes.jsonl"
+    if not path.is_file():
+        pytest.skip("episode dataset not generated")
+    eps = load_episode_jsonl(path)
+    assert len(eps) == 62
+    held = set(held_out_training_ids())
+    ids = {e.task_id for e in eps}
+    assert not (ids & held)
+    assert not (ids & evaluation_task_ids())
+    assert_training_safe(eps, held)
+    kinds = {e.kind for e in eps}
+    assert "underconstraint" in kinds
+    assert "success_trajectory" in kinds
+    aabf = [e for e in eps if e.task_id == "aabf363d"]
+    assert aabf
+    assert all(e.kind == "underconstraint" for e in aabf)
+    assert all(not any(t.assistant.upper().startswith("COMMIT") for t in e.turns) for e in aabf)
+    pin = path.parent / "DATASET_HASH.txt"
+    digest = file_sha256(path)
+    if pin.is_file():
+        assert digest == pin.read_text(encoding="utf-8").strip()
+    # JSON-action projection must remain gold-free.
+    for e in eps:
+        for msg in e.to_json_action_messages():
+            if msg["role"] == "user":
+                assert "TEST 0 OUTPUT" not in msg["content"]
 
 
 def test_teacher_success_trajectory_solves_via_env():
@@ -189,31 +234,46 @@ def test_bond_deltas_distinguish_learned_and_substrate():
 
 def test_four_way_eval_scripted_bond_vs_base():
     task = _rot180_task()
-    budget = ElevationBudget(max_calls=8, max_seconds=5, max_tokens=64)
-    base = ScriptedModel(responses=["1 0\n0 2", "1 0\n0 2", "APPLY rot90", "COMMIT rot90"])
+    budget = RunnerBudget(max_model_calls=8, max_seconds=5, seed=0)
+    base = ScriptedModel(
+        responses=[
+            "1 0\n0 2",
+            "1 0\n0 2",
+            json.dumps({"action": "execute_program", "arguments": {"program": "rot90"}}),
+            json.dumps({"action": "commit_candidates", "arguments": {"program": "rot90"}}),
+        ]
+    )
     bond = ScriptedModel(
         responses=[
             "2 0\n0 1",
             "2 0\n0 1",
-            "HYPOTHESIZE rotate 180",
-            "INSPECT shapes",
-            "APPLY rot180",
-            "COMMIT rot180",
+            json.dumps({"action": "revise_hypothesis", "arguments": {"text": "rotate 180"}}),
+            json.dumps({"action": "inspect_objects", "arguments": {}}),
+            json.dumps({"action": "execute_program", "arguments": {"program": "rot180"}}),
+            json.dumps({"action": "commit_candidates", "arguments": {"program": "rot180"}}),
         ]
     )
-    report = run_bond_eval([task], base_model=base, bond_model=bond, budget=budget, out_dir=Path("artifacts/bond/eval_smoke"))
+    report = run_bond_eval(
+        [task],
+        base_model=base,
+        bond_model=bond,
+        budget=budget,
+        out_dir=Path("artifacts/bond/eval_smoke"),
+        include_aabf_probe=False,
+    )
     d = report["deltas"]
     assert report["summaries"]["base_direct"]["solved"] == 0
     assert report["summaries"]["bond_direct"]["solved"] == 1
     assert report["summaries"]["bond_hrps"]["solved"] == 1
     assert d["delta_train_bond_direct_minus_base_direct"] >= 1
     assert set(SYSTEMS) == {"base_direct", "base_hrps", "bond_direct", "bond_hrps"}
+    assert report["is_final_bond"] is False
 
 
 def test_manifest_records_foundation_and_holdout():
     held = held_out_training_ids()[:3]
     man = bond_manifest(
-        model_name=LOCAL_DEFAULT,
+        foundation=resolve_foundation("qwen1.5b_smoke"),
         adapter_dir=None,
         train_config={"lora_r": 16},
         episode_summary={"n_episodes": 0},
@@ -221,8 +281,9 @@ def test_manifest_records_foundation_and_holdout():
         status="episodes_ready",
         notes=["test"],
     )
-    assert man["foundation"]["preferred_foundation"] == PREFERRED_INKLING
-    assert man["foundation"]["local_foundation"] == LOCAL_DEFAULT
+    assert man["foundation"]["hf_id"].startswith("Qwen/Qwen2.5-1.5B")
+    assert man["is_final_bond"] is False
+    assert man["artifact_class"] == "smoke_not_final_bond"
     assert man["data_provenance"]["public_evaluation_used"] is False
     assert man["data_provenance"]["held_out_excluded"] == held
     assert man["schemas"]["executor"] == "src.hrps.dsl.replay"

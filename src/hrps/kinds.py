@@ -56,6 +56,13 @@ COMPONENT_KIND: dict[str, Kind] = {
     "bond_episode": Kind.EXACT,  # env replay of actions/residuals; selection is training-only
     "bond_adapter": Kind.LEARNED,  # LoRA/QLoRA parameters from HRPS episodes
     "bond_inference_controller": Kind.EXACT,  # same HRPS action loop as elevation M2
+    "bond_action_schema": Kind.EXACT,  # typed JSON actions; unknown names rejected
+    "bond_runner": Kind.EXACT,  # call/token/time budgets and termination
+    "bond_model_backend": Kind.EXACT,  # foundation registry and load policy
+    "bond_identity": Kind.EXACT,  # public Bond name; adapter required
+    "bond_memory": Kind.EXACT,  # hypothesis/action/observation history
+    "bond_tools": Kind.EXACT,  # typed HRPS tools; unknown actions rejected
+    "bond_overseer": Kind.EXACT,  # active model-controlled reasoning loop
 }
 
 

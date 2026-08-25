@@ -1,20 +1,35 @@
 {
+  "public_name": "Bond",
   "name": "Bond",
   "version": "bond-v0",
   "status": "episodes_ready",
+  "artifact_class": "smoke_not_final_bond",
+  "is_final_bond": false,
+  "retain_foundation_weights": true,
+  "license": {
+    "note": "Bond is a fine-tune of an open Qwen foundation. Keep the foundation checkpoint. Record the foundation identifier here; do not use that name as the runtime identity.",
+    "foundation_hf_id": "Qwen/Qwen2.5-1.5B-Instruct"
+  },
   "thesis": "Bond is an actively trained open reasoning model-system whose parameters are improved through verified HRPS reasoning experience, and whose inference is amplified by the same executable cognitive substrate.",
   "foundation": {
-    "preferred_foundation": "thinkingmachines/Inkling-Small",
-    "local_foundation": "Qwen/Qwen2.5-1.5B-Instruct",
-    "resolved_foundation": "Qwen/Qwen2.5-1.5B-Instruct",
+    "id": "qwen1.5b_smoke",
+    "hf_id": "Qwen/Qwen2.5-1.5B-Instruct",
+    "label": "Bond-Qwen1.5B-smoke",
+    "public_name": "Bond",
+    "is_final_bond": false,
+    "local_ok": true,
+    "requires_gpu": false,
+    "min_ram_gb": 10,
+    "min_avail_gb": 6.0,
+    "notes": "Local 1.5B CPU/GPU smoke. Close Discord/Chrome first. Not a 4B Bond result.",
     "weights_hash": null,
-    "hash_note": "hash is filled after the base checkpoint is materialized on disk",
-    "inkling_local": false
+    "hash_note": "filled after the base checkpoint is materialized on disk"
   },
   "adapter": {
     "path": "C:\\arc-agi-2-project\\models\\bond_adapter",
     "present": false,
-    "kind": "lora"
+    "kind": "lora",
+    "trained": false
   },
   "training": {
     "lora_r": 16,
@@ -39,8 +54,13 @@
     "max_seq_length": 2048,
     "warmup_ratio": 0.05,
     "seed": 42,
-    "quantization": "none"
+    "quantization": "none",
+    "holdout_spec": "training[400:440]",
+    "foundation_id": "qwen1.5b_smoke",
+    "hf_id": "Qwen/Qwen2.5-1.5B-Instruct"
   },
+  "losses": {},
+  "code_revision": "218806e36c9ac4d1bfe7e7b7032bf4ce01e3e133",
   "data_provenance": {
     "split": "training",
     "held_out_excluded": [
@@ -88,126 +108,13 @@
     "public_evaluation_used": false,
     "episodes": {
       "n_episodes": 62,
-      "n_sft": 62,
-      "kinds": {
-        "search_strategy": 15,
-        "success_trajectory": 15,
-        "direct_answer": 21,
-        "abstraction": 4,
-        "competing_hypotheses": 6,
-        "underconstraint": 1
-      },
-      "task_ids": [
-        "00576224",
-        "007bbfb7",
-        "009d5c81",
-        "00d62c1b",
-        "00dbd492",
-        "017c7c7b",
-        "025d127b",
-        "03560426",
-        "045e512c",
-        "0520fde7",
-        "05269061",
-        "05a7bcf2",
-        "05f2a901",
-        "0607ce86",
-        "0692e18c",
-        "0d3d703e",
-        "1cf80156",
-        "2013d3e2",
-        "28bf18c6",
-        "3906de3d",
-        "3c9b0459",
-        "60c09cac",
-        "6150a2bd",
-        "67a3c6ac",
-        "68b16354",
-        "9172f3a0",
-        "9dfd6313",
-        "a416b8f3",
-        "a740d043",
-        "aabf363d",
-        "b1948b0a",
-        "be03b35f",
-        "c59eb873",
-        "c8f0f002",
-        "d511f180",
-        "ed36ccf7",
-        "f25fbde4"
-      ],
+      "episodes_sha256": "e47ffbaf9cee95e6cf672b01b88a252805d65cd2895879cf3782d7d67360a47e",
       "sft_sha256": "1f51a6f961494f2cc16d9ce2b089cb23845cb19489e0d72956fab213d3ea8ab6",
-      "action_schema": {
-        "actions": [
-          "observe",
-          "inspect",
-          "apply",
-          "residual",
-          "hypothesize",
-          "commit",
-          "catalog",
-          "answer"
-        ],
-        "inspect_targets": [
-          "colors",
-          "shapes",
-          "objects",
-          "catalog",
-          "underconstraint"
-        ],
-        "program": "serialized DSL, ops joined by ' | ', depth <= 3",
-        "verifier": "joint pixel residual + gold-free underconstraint flags",
-        "hidden": [
-          "test_output",
-          "public_evaluation"
-        ]
-      },
-      "held_out_excluded": [
-        "6a980be1",
-        "6aa20dc0",
-        "6ad5bdfd",
-        "6b9890af",
-        "6bcdb01e",
-        "6c434453",
-        "6ca952ad",
-        "6cbe9eb8",
-        "6cdd2623",
-        "6cf79266",
-        "6d0160f0",
-        "6d0aefbc",
-        "6d1d5c90",
-        "6d58a25d",
-        "6d75e8bb",
-        "6df30ad6",
-        "6e02f1e3",
-        "6e19193c",
-        "6e82a1ae",
-        "6ea4a07e",
-        "6ecd11f4",
-        "6f473927",
-        "6f8cd79b",
-        "6fa7a44f",
-        "6ffe8f07",
-        "7039b2d7",
-        "705a3229",
-        "712bf12e",
-        "72207abc",
-        "72322fa7",
-        "72a961c9",
-        "72ca375d",
-        "73182012",
-        "73c3b0d8",
-        "73ccf9c2",
-        "7447852a",
-        "7468f01a",
-        "746b3537",
-        "74dd1130",
-        "753ea09b"
-      ]
+      "sft_actions_sha256": "e3c7369c086a2359e11af47bba83e58540a6774cad97e7e0db2d49700da3f995"
     }
   },
   "schemas": {
-    "actions": {
+    "legacy_actions": {
       "actions": [
         "observe",
         "inspect",
@@ -232,11 +139,22 @@
         "public_evaluation"
       ]
     },
-    "inference_controller": "src.hrps.agent.run_episode M0/M2",
+    "json_actions": [
+      "inspect_objects",
+      "inspect_relations",
+      "propose_program",
+      "execute_program",
+      "compare_residuals",
+      "revise_hypothesis",
+      "reject_hypothesis",
+      "commit_candidates"
+    ],
+    "inference_controller": "src.hrps.runner.run_system",
     "executor": "src.hrps.dsl.replay",
     "verifier": "src.hrps.residual.joint_residual + gold_free_constraint_feedback"
   },
   "notes": [
-    "generated 62 episodes excluding 40 held-out ids"
+    "using existing episodes; not regenerated",
+    "smoke four-way eval used scripted adapter; not a learned Bond result"
   ]
 }

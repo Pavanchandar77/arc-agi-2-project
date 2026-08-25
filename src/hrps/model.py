@@ -16,6 +16,16 @@ from typing import Callable, Optional, Protocol
 
 PREFERRED_INKLING = "thinkingmachines/Inkling-Small"
 LOCAL_DEFAULT = "Qwen/Qwen2.5-1.5B-Instruct"
+SMOKE_FOUNDATION = "Qwen/Qwen2.5-1.5B-Instruct"
+CPU_FOUNDATION = "Qwen/Qwen2.5-0.5B-Instruct"
+SMALL_EXPERIMENT_FOUNDATION = "Qwen/Qwen3.5-4B"
+PRIMARY_FOUNDATION = "Qwen/Qwen3.8-27B"
+DEEPSEEK_FOUNDATION = "deepseek-ai/DeepSeek-V4-Flash"
+SMOKE_LABEL = "Bond-Qwen1.5B-smoke"
+CPU_LABEL = "Bond-Qwen0.5B-cpu"
+SMALL_LABEL = "Bond-Qwen3.5-4B"
+PRIMARY_LABEL = "Bond-Qwen38-27B"
+DEEPSEEK_LABEL = "Bond-DeepSeek-V4-Flash"
 
 
 def resolve_model_name(explicit: Optional[str] = None) -> str:
@@ -44,7 +54,15 @@ class FrozenOpenModel(Protocol):
     name: str
     backend: str
 
-    def generate(self, prompt: str, *, max_tokens: int, temperature: float) -> ModelTurn: ...
+    def generate(
+        self,
+        prompt: str,
+        *,
+        max_tokens: int,
+        temperature: float,
+        top_p: float = 1.0,
+        seed: int = 0,
+    ) -> ModelTurn: ...
 
 
 @dataclass
@@ -56,7 +74,15 @@ class ScriptedModel:
     backend: str = "fake"
     calls: int = 0
 
-    def generate(self, prompt: str, *, max_tokens: int, temperature: float) -> ModelTurn:
+    def generate(
+        self,
+        prompt: str,
+        *,
+        max_tokens: int,
+        temperature: float,
+        top_p: float = 1.0,
+        seed: int = 0,
+    ) -> ModelTurn:
         self.calls += 1
         if not self.responses:
             text = ""
@@ -78,7 +104,15 @@ class CallbackModel:
     backend: str = "fake"
     calls: int = 0
 
-    def generate(self, prompt: str, *, max_tokens: int, temperature: float) -> ModelTurn:
+    def generate(
+        self,
+        prompt: str,
+        *,
+        max_tokens: int,
+        temperature: float,
+        top_p: float = 1.0,
+        seed: int = 0,
+    ) -> ModelTurn:
         self.calls += 1
         text = self.fn(prompt)
         return ModelTurn(
@@ -102,6 +136,8 @@ class HuggingFaceModel:
         *,
         device: Optional[str] = None,
         adapter_path: Optional[str] = None,
+        local_files_only: bool = True,
+        seed: int = 0,
     ) -> None:
         import torch
         from transformers import AutoModelForCausalLM, AutoTokenizer
@@ -110,7 +146,10 @@ class HuggingFaceModel:
         self.name = model_name if not adapter_path else f"{model_name}+bond"
         self.backend = "hf" if not adapter_path else "hf_bond"
         self.adapter_path = adapter_path
-        self.tokenizer = AutoTokenizer.from_pretrained(model_name, trust_remote_code=True)
+        self.local_files_only = local_files_only
+        self.seed = int(seed)
+        kw = {"trust_remote_code": True, "local_files_only": local_files_only}
+        self.tokenizer = AutoTokenizer.from_pretrained(model_name, **kw)
         if self.tokenizer.pad_token is None:
             self.tokenizer.pad_token = self.tokenizer.eos_token
         cuda = torch.cuda.is_available()
@@ -122,19 +161,30 @@ class HuggingFaceModel:
             model_name,
             torch_dtype=dtype,
             device_map="auto" if cuda else None,
-            trust_remote_code=True,
+            **kw,
         )
         if adapter_path:
             from peft import PeftModel
 
-            self.model = PeftModel.from_pretrained(self.model, adapter_path)
+            self.model = PeftModel.from_pretrained(
+                self.model, adapter_path, local_files_only=local_files_only
+            )
         if not cuda:
             self.model.to(self.device)
         self.model.eval()
 
-    def generate(self, prompt: str, *, max_tokens: int, temperature: float) -> ModelTurn:
+    def generate(
+        self,
+        prompt: str,
+        *,
+        max_tokens: int,
+        temperature: float,
+        top_p: float = 1.0,
+        seed: int = 0,
+    ) -> ModelTurn:
         import torch
 
+        torch.manual_seed(int(seed) if seed else self.seed)
         messages = [{"role": "user", "content": prompt}]
         if getattr(self.tokenizer, "chat_template", None):
             text = self.tokenizer.apply_chat_template(
@@ -152,6 +202,7 @@ class HuggingFaceModel:
         if temperature and temperature > 0:
             gen_kwargs["do_sample"] = True
             gen_kwargs["temperature"] = float(temperature)
+            gen_kwargs["top_p"] = float(top_p)
         else:
             gen_kwargs["do_sample"] = False
         with torch.no_grad():
@@ -162,7 +213,7 @@ class HuggingFaceModel:
             text=completion,
             n_prompt_tokens=n_prompt,
             n_completion_tokens=int(new_tokens.shape[-1]),
-            backend="hf",
+            backend=self.backend,
             model_name=self.name,
         )
 
@@ -170,11 +221,14 @@ class HuggingFaceModel:
 def try_load_open_model(
     model_name: Optional[str] = None,
     adapter_path: Optional[str] = None,
+    local_files_only: bool = True,
+    seed: int = 0,
 ) -> tuple[Optional[FrozenOpenModel], str]:
     """Load the frozen open model. Never downloads a 276B checkpoint by accident.
 
     Returns (model, status). status is 'ok', 'no_torch', 'no_transformers',
     'inkling_too_large', or an error string. adapter_path loads Bond LoRA.
+    Default is offline (local_files_only=True).
     """
     name = resolve_model_name(model_name)
     if name.lower().startswith("thinkingmachines/inkling") or name.lower() == "inkling-small":
@@ -193,8 +247,18 @@ def try_load_open_model(
         import transformers  # noqa: F401
     except Exception:
         return None, "no_transformers"
+    allow_download = os.environ.get("HRPS_ALLOW_DOWNLOAD", "").strip() in {"1", "true", "yes"}
+    offline = local_files_only and not allow_download
     try:
-        model = HuggingFaceModel(name, adapter_path=adapter_path)
+        model = HuggingFaceModel(
+            name,
+            adapter_path=adapter_path,
+            local_files_only=offline,
+            seed=seed,
+        )
         return model, "ok"
     except Exception as exc:
+        msg = str(exc)
+        if offline and ("offline" in msg.lower() or "not a valid model" in msg.lower() or "Can't load" in msg or "local_files_only" in msg):
+            return None, f"offline_weights_missing:{name}"
         return None, f"load_failed:{type(exc).__name__}:{exc}"

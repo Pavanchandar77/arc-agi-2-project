@@ -207,6 +207,7 @@ class HrpsEnv:
         self.n_apply = 0
         self.n_commit = 0
         self.n_hypothesize = 0
+        self.n_rejections = 0
         self.n_accepted = 0
         self.n_rejected = 0
         self.n_contradiction_resolutions = 0
@@ -295,11 +296,18 @@ class HrpsEnv:
         prev = self.hypotheses[-1] if self.hypotheses else None
         self.hypotheses.append(text)
         self.n_hypothesize += 1
+        rejected = text.lower().startswith("reject")
+        if rejected:
+            self.n_rejections += 1
         fb = EnvFeedback(
             True,
             "hypothesize",
             f"recorded hypothesis #{len(self.hypotheses)}: {text}",
-            {"n": len(self.hypotheses), "revised": prev is not None and prev != text},
+            {
+                "n": len(self.hypotheses),
+                "revised": prev is not None and prev != text,
+                "rejected": rejected,
+            },
         )
         self._accept(fb)
         return fb
@@ -334,6 +342,15 @@ class HrpsEnv:
                 spec_id = rest[1].split("=", 1)[-1]
             data = self._inspect_objects(spec_id)
             fb = EnvFeedback(True, "inspect", _format_objects(data), data)
+            self._accept(fb)
+            return fb
+        if token in {"relations", "relation"}:
+            spec_id = "4c_zero"
+            rest = what.strip().split()
+            if len(rest) >= 2:
+                spec_id = rest[1].split("=", 1)[-1]
+            data = self._inspect_relations(spec_id)
+            fb = EnvFeedback(True, "inspect", _format_relations(data), data)
             self._accept(fb)
             return fb
         return self._reject("inspect", f"unknown_inspect:{token}")
@@ -411,6 +428,35 @@ class HrpsEnv:
                 }
             )
         return {"spec": spec.spec_id, "kind": Kind.SOUND_INCOMPLETE.value, "demos": demos, "tests": tests}
+
+    def _inspect_relations(self, spec_id: str) -> dict[str, Any]:
+        spec = next((s for s in BANK_D if s.spec_id == spec_id), BANK_D[0])
+        preds = tuple(p.input for p in self.task.train)
+        gts = self.task.train_outputs()
+        jr = joint_residual(preds, gts, spec=spec)
+        rels = []
+        for i, pair in enumerate(jr.pairs):
+            rels.append(
+                {
+                    "i": i,
+                    "n_pred": pair.relations.n_pred,
+                    "n_gt": pair.relations.n_gt,
+                    "symmetric_difference": pair.relations.symmetric_difference,
+                    "object_unmatched": pair.objects.unmatched,
+                }
+            )
+        tests = []
+        for i, p in enumerate(self.task.test):
+            rin = build_representation(p.input, spec)
+            tests.append({"i": i, "n_in": rin.n_objects, "spec": spec.spec_id})
+        return {
+            "spec": spec.spec_id,
+            "kind": Kind.SOUND_INCOMPLETE.value,
+            "relations": rels,
+            "relation_diff_total": jr.relation_diff_total,
+            "object_unmatched_total": jr.object_unmatched_total,
+            "tests": tests,
+        }
 
     def _execute_program(self, program: Program) -> tuple[tuple[Optional[Grid], ...], JointResidual]:
         preds: list[Optional[Grid]] = []
@@ -623,6 +669,22 @@ def _format_shapes(data: dict[str, Any]) -> str:
         lines.append(f"  demo{d['i']}: {d['in_hw']} -> {d['out_hw']} same={d['same_shape']}")
     for t in data["tests"]:
         lines.append(f"  test{t['i']}_input: {t['in_hw']}")
+    return "\n".join(lines)
+
+
+def _format_relations(data: dict[str, Any]) -> str:
+    lines = [
+        f"INSPECT relations spec={data['spec']} (quantized object relations; sound but incomplete)"
+    ]
+    for r in data.get("relations") or []:
+        lines.append(
+            f"  demo{r['i']}: n_pred={r['n_pred']} n_gt={r['n_gt']} "
+            f"symdiff={r['symmetric_difference']} unmatched={r['object_unmatched']}"
+        )
+    lines.append(
+        f"  totals: relation_diff={data.get('relation_diff_total')} "
+        f"object_unmatched={data.get('object_unmatched_total')}"
+    )
     return "\n".join(lines)
 
 

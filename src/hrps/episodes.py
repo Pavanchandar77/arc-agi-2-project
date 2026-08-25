@@ -20,6 +20,7 @@ from src.hrps.abstractions import AbstractionLibrary, parse_program_text
 from src.hrps.agent import SYSTEM_M0, SYSTEM_M2
 from src.hrps.dsl import Program
 from src.hrps.env import Action, HrpsEnv, gold_free_constraint_feedback, grid_to_compact, parse_program
+from src.hrps.schema import BOND_ACTIONS, SYSTEM_BOND_JSON, teacher_line_to_json
 from src.hrps.separability import DEFAULT_N, DEFAULT_OFFSET, held_out_training_ids
 from src.hrps.task import DEFAULT_DATA_ROOT, ArcTask, load_task_file
 
@@ -156,6 +157,23 @@ class BondEpisode:
             msgs.append({"role": "assistant", "content": turn.assistant})
             msgs.append({"role": "user", "content": "HRPS:\n" + turn.feedback})
         # Drop the trailing environment turn so SFT ends on an assistant action.
+        if msgs and msgs[-1]["role"] == "user" and len(msgs) > 2:
+            msgs.pop()
+        return msgs
+
+    def to_json_action_messages(self) -> list[dict[str, str]]:
+        if self.kind == "direct_answer":
+            return self.to_sft_messages(system=SYSTEM_M0)
+        msgs = [{"role": "system", "content": SYSTEM_BOND_JSON}]
+        user = self.observe
+        if self.catalog:
+            user = user + "\n\nCATALOG:\n" + self.catalog
+        msgs.append({"role": "user", "content": user})
+        for turn in self.turns:
+            mapped = teacher_line_to_json(turn.assistant)
+            assistant = json.dumps(mapped, sort_keys=True) if mapped else turn.assistant
+            msgs.append({"role": "assistant", "content": assistant})
+            msgs.append({"role": "user", "content": "HRPS:\n" + turn.feedback})
         if msgs and msgs[-1]["role"] == "user" and len(msgs) > 2:
             msgs.pop()
         return msgs
@@ -481,39 +499,111 @@ def generate_bond_episodes(
     return episodes
 
 
-def assert_training_safe(episodes: Iterable[BondEpisode], held_out_ids: Iterable[str]) -> None:
+def evaluation_task_ids(data_root: Optional[Path] = None) -> set[str]:
+    folder = (data_root or DEFAULT_DATA_ROOT) / "evaluation"
+    if not folder.is_dir():
+        return set()
+    return {p.stem for p in folder.glob("*.json")}
+
+
+def file_sha256(path: Path) -> str:
+    h = hashlib.sha256()
+    h.update(Path(path).read_bytes())
+    return h.hexdigest()
+
+
+def assert_training_safe(
+    episodes: Iterable[BondEpisode],
+    held_out_ids: Iterable[str],
+    *,
+    data_root: Optional[Path] = None,
+) -> None:
     held = set(held_out_ids)
+    eval_ids = evaluation_task_ids(data_root)
     for ep in episodes:
         if ep.held_out:
             raise ValueError(f"held-out episode leaked into training: {ep.task_id}")
         if ep.task_id in held:
             raise ValueError(f"held-out task id in Bond data: {ep.task_id}")
+        if ep.task_id in eval_ids:
+            raise ValueError(f"public evaluation id in Bond data: {ep.task_id}")
         if ep.split != "training":
             raise ValueError(f"non-training split in Bond data: {ep.split} {ep.task_id}")
         blob = ep.observe + "".join(t.feedback for t in ep.turns)
         if "TEST 0 OUTPUT" in blob or "TEST 1 OUTPUT" in blob:
             raise ValueError(f"test gold leaked into observations: {ep.task_id}")
+        if "pred_equals_gt" in blob:
+            raise ValueError(f"hidden test comparison leaked: {ep.task_id}")
+        for msg in ep.to_sft_messages() + ep.to_json_action_messages():
+            if msg["role"] == "user" and ("TEST 0 OUTPUT" in msg["content"] or "TEST 1 OUTPUT" in msg["content"]):
+                raise ValueError(f"test gold leaked into prompt: {ep.task_id}")
 
 
 def write_episodes(episodes: list[BondEpisode], out_dir: Path) -> dict[str, Any]:
     out_dir.mkdir(parents=True, exist_ok=True)
     jsonl = out_dir / "episodes.jsonl"
     sft = out_dir / "sft.jsonl"
-    with jsonl.open("w", encoding="utf-8") as fh, sft.open("w", encoding="utf-8") as sh:
+    sft_actions = out_dir / "sft_actions.jsonl"
+    with jsonl.open("w", encoding="utf-8") as fh, sft.open("w", encoding="utf-8") as sh, sft_actions.open(
+        "w", encoding="utf-8"
+    ) as ah:
         for ep in episodes:
             fh.write(json.dumps(ep.as_dict()) + "\n")
             sh.write(json.dumps({"messages": ep.to_sft_messages(), "task_id": ep.task_id, "kind": ep.kind}) + "\n")
+            ah.write(
+                json.dumps({"messages": ep.to_json_action_messages(), "task_id": ep.task_id, "kind": ep.kind}) + "\n"
+            )
     kinds: dict[str, int] = {}
     for ep in episodes:
         kinds[ep.kind] = kinds.get(ep.kind, 0) + 1
-    digest = hashlib.sha256(sft.read_bytes()).hexdigest() if sft.is_file() else None
+    digest = file_sha256(sft) if sft.is_file() else None
+    episodes_digest = file_sha256(jsonl) if jsonl.is_file() else None
+    actions_digest = file_sha256(sft_actions) if sft_actions.is_file() else None
     summary = {
         "n_episodes": len(episodes),
         "n_sft": len(episodes),
         "kinds": kinds,
         "task_ids": sorted({e.task_id for e in episodes}),
         "sft_sha256": digest,
+        "episodes_sha256": episodes_digest,
+        "sft_actions_sha256": actions_digest,
         "action_schema": ACTION_SCHEMA,
+        "json_action_schema": {"actions": list(BOND_ACTIONS)},
     }
     (out_dir / "episodes_summary.json").write_text(json.dumps(summary, indent=2), encoding="utf-8")
     return summary
+
+
+def episode_from_dict(d: dict[str, Any]) -> BondEpisode:
+    turns = [
+        BondTurn(
+            assistant=t.get("assistant") or "",
+            feedback=t.get("feedback") or "",
+            accepted=bool(t.get("accepted")),
+            residual_pixel=t.get("residual_pixel"),
+            joint_exact=t.get("joint_exact"),
+        )
+        for t in d.get("turns") or []
+    ]
+    return BondEpisode(
+        episode_id=str(d.get("episode_id") or ""),
+        task_id=str(d["task_id"]),
+        kind=str(d.get("kind") or ""),
+        split=str(d.get("split") or "training"),
+        held_out=bool(d.get("held_out")),
+        program=str(d.get("program") or ""),
+        joint_demo_exact=bool(d.get("joint_demo_exact")),
+        test_transfer=d.get("test_transfer"),
+        turns=turns,
+        observe=str(d.get("observe") or ""),
+        catalog=str(d.get("catalog") or ""),
+        provenance=dict(d.get("provenance") or {}),
+    )
+
+
+def load_episode_jsonl(path: Path) -> list[BondEpisode]:
+    out: list[BondEpisode] = []
+    for line in Path(path).read_text(encoding="utf-8").splitlines():
+        if line.strip():
+            out.append(episode_from_dict(json.loads(line)))
+    return out

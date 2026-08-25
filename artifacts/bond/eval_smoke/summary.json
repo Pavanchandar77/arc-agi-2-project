@@ -11,12 +11,17 @@
   ],
   "budget": {
     "temperature": 0.0,
-    "max_tokens": 64,
-    "max_calls": 8,
-    "max_seconds": 5
+    "top_p": 1.0,
+    "seed": 42,
+    "max_tokens_per_call": 256,
+    "max_model_calls": 8,
+    "max_total_tokens": 4096,
+    "max_seconds": 30.0
   },
   "base_model": "scripted",
-  "bond_model": "scripted",
+  "bond_model": "Bond-smoke",
+  "bond_present": true,
+  "adapter_trained": false,
   "summaries": {
     "base_direct": {
       "n": 1,
@@ -25,21 +30,23 @@
       "joint_demo_exact": 0,
       "pass2": 0,
       "pass2_rate": 0.0,
-      "failure_taxonomy": {
-        "direct_mismatch": 1
-      },
       "valid_formal_action_rate_mean": 1.0,
       "n_distinct_hypotheses_mean": 0.0,
       "n_hypothesis_revisions_mean": 0.0,
+      "n_hypothesis_rejections_mean": 0.0,
       "n_representation_requests_mean": 0.0,
       "n_verifier_calls_mean": 0.0,
       "n_contradiction_resolutions_mean": 0.0,
       "n_model_calls_mean": 2.0,
-      "wall_clock_mean": 0.005878,
-      "n_prompt_tokens_sum": 170,
+      "n_prompt_tokens_sum": 160,
       "n_completion_tokens_sum": 8,
+      "hrps_symbolic_seconds_sum": 0.000893,
+      "wall_clock_mean": 0.001394,
+      "peak_memory_max": 0,
       "solved_ids": [],
-      "joint_not_transferred": []
+      "terminations": {
+        "direct_done": null
+      }
     },
     "base_hrps": {
       "n": 1,
@@ -48,21 +55,23 @@
       "joint_demo_exact": 0,
       "pass2": 0,
       "pass2_rate": 0.0,
-      "failure_taxonomy": {
-        "no_joint_program": 1
-      },
       "valid_formal_action_rate_mean": 1.0,
       "n_distinct_hypotheses_mean": 0.0,
       "n_hypothesis_revisions_mean": 0.0,
+      "n_hypothesis_rejections_mean": 0.0,
       "n_representation_requests_mean": 0.0,
-      "n_verifier_calls_mean": 8.0,
+      "n_verifier_calls_mean": 2.0,
       "n_contradiction_resolutions_mean": 0.0,
-      "n_model_calls_mean": 8.0,
-      "wall_clock_mean": 0.007967,
-      "n_prompt_tokens_sum": 1596,
-      "n_completion_tokens_sum": 4,
+      "n_model_calls_mean": 2.0,
+      "n_prompt_tokens_sum": 378,
+      "n_completion_tokens_sum": 10,
+      "hrps_symbolic_seconds_sum": 0.000853,
+      "wall_clock_mean": 0.00133,
+      "peak_memory_max": 0,
       "solved_ids": [],
-      "joint_not_transferred": []
+      "terminations": {
+        "committed": null
+      }
     },
     "bond_direct": {
       "n": 1,
@@ -71,23 +80,25 @@
       "joint_demo_exact": 0,
       "pass2": 1,
       "pass2_rate": 1.0,
-      "failure_taxonomy": {
-        "solved": 1
-      },
       "valid_formal_action_rate_mean": 1.0,
       "n_distinct_hypotheses_mean": 0.0,
       "n_hypothesis_revisions_mean": 0.0,
+      "n_hypothesis_rejections_mean": 0.0,
       "n_representation_requests_mean": 0.0,
       "n_verifier_calls_mean": 0.0,
       "n_contradiction_resolutions_mean": 0.0,
       "n_model_calls_mean": 2.0,
-      "wall_clock_mean": 0.004826,
-      "n_prompt_tokens_sum": 170,
+      "n_prompt_tokens_sum": 158,
       "n_completion_tokens_sum": 8,
+      "hrps_symbolic_seconds_sum": 2.8e-05,
+      "wall_clock_mean": 0.000378,
+      "peak_memory_max": 0,
       "solved_ids": [
         "synth_rot180"
       ],
-      "joint_not_transferred": []
+      "terminations": {
+        "direct_done": null
+      }
     },
     "bond_hrps": {
       "n": 1,
@@ -96,27 +107,31 @@
       "joint_demo_exact": 1,
       "pass2": 1,
       "pass2_rate": 1.0,
-      "failure_taxonomy": {
-        "solved": 1
-      },
       "valid_formal_action_rate_mean": 1.0,
       "n_distinct_hypotheses_mean": 1.0,
       "n_hypothesis_revisions_mean": 0.0,
+      "n_hypothesis_rejections_mean": 0.0,
       "n_representation_requests_mean": 1.0,
       "n_verifier_calls_mean": 2.0,
       "n_contradiction_resolutions_mean": 0.0,
       "n_model_calls_mean": 4.0,
-      "wall_clock_mean": 0.003717,
-      "n_prompt_tokens_sum": 931,
-      "n_completion_tokens_sum": 9,
+      "n_prompt_tokens_sum": 769,
+      "n_completion_tokens_sum": 20,
+      "hrps_symbolic_seconds_sum": 0.000646,
+      "wall_clock_mean": 0.001137,
+      "peak_memory_max": 0,
       "solved_ids": [
         "synth_rot180"
       ],
-      "joint_not_transferred": []
+      "terminations": {
+        "committed": null
+      }
     }
   },
   "deltas": {
     "claim": "learned_gain_without_extra_substrate_gain",
+    "learned_model_gain": true,
+    "substrate_gain": false,
     "base_direct": 0,
     "base_hrps": 0,
     "bond_direct": 1,
@@ -125,7 +140,34 @@
     "delta_substrate_bond_hrps_minus_bond_direct": 0,
     "delta_harness_base_hrps_minus_base_direct": 0,
     "delta_full_bond_hrps_minus_base_direct": 1,
-    "criterion": "Bond succeeds when Bond+HRPS solves more held-out tasks than the unchanged foundation under matched information and compute. Strong evidence also requires Bond direct > foundation direct (learned) and Bond+HRPS > Bond direct (substrate)."
+    "criterion": "A learned-model gain requires bond_direct > base_direct after adapter weights changed. A substrate gain requires bond_hrps > bond_direct. A wrapper-only score is not a Bond result."
   },
-  "bond_present": true
+  "paired_outcomes": [
+    {
+      "task_id": "synth_rot180",
+      "base_direct": {
+        "solved": false,
+        "joint_demo_exact": false,
+        "termination": "direct_done"
+      },
+      "base_hrps": {
+        "solved": false,
+        "joint_demo_exact": false,
+        "termination": "committed"
+      },
+      "bond_direct": {
+        "solved": true,
+        "joint_demo_exact": false,
+        "termination": "direct_done"
+      },
+      "bond_hrps": {
+        "solved": true,
+        "joint_demo_exact": true,
+        "termination": "committed"
+      }
+    }
+  ],
+  "aabf363d_probe": {},
+  "is_final_bond": false,
+  "honesty": "Scores here are not a learned Bond result unless adapter weights were trained and bond_direct is compared to base_direct."
 }

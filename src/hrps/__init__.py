@@ -1,9 +1,10 @@
 """Hierarchical Residual Program Synthesis (HRPS).
 
 Phase 1 is the instrumented finite-DSL search microscope (A–G, then H).
-Open-model elevation (M0–M3) lives in src.hrps.elevation. Bond training
-(HRPS episodes → LoRA adapter → Bond+HRPS inference) lives in src.hrps.bond.
-See src.hrps.conclusions for frozen Phase-1 statements.
+Open-model elevation (M0–M3) lives in src.hrps.elevation. Bond is the
+active model-system: identity, schema, overseer, memory, tools, SFT train,
+four-way eval. See src.hrps.bond_manifest.MODULE_MAP. Phase-1 conclusions
+remain in src.hrps.conclusions.
 """
 
 from src.hrps.conclusions import FROZEN_CONCLUSIONS, NEXT_CHANGE_POLICY

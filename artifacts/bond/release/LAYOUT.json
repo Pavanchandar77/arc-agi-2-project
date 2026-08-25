@@ -1,0 +1,10 @@
+{
+  "public_name": "Bond",
+  "bond_model": "learned adapter or merged weights; foundation checkpoint stays separate and must not be deleted",
+  "bond_controller": "src.hrps.runner.run_system",
+  "bond_interface": "src.hrps.schema",
+  "bond_hrps": "src.hrps.env + src.hrps.representation",
+  "bond_executor": "src.hrps.dsl.replay",
+  "bond_verifier": "src.hrps.residual.joint_residual",
+  "bond_manifest": "bond_manifest.json"
+}

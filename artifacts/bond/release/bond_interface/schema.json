@@ -1,0 +1,44 @@
+{
+  "actions": [
+    "inspect_objects",
+    "inspect_relations",
+    "propose_program",
+    "execute_program",
+    "compare_residuals",
+    "revise_hypothesis",
+    "reject_hypothesis",
+    "commit_candidates"
+  ],
+  "schema": {
+    "type": "object",
+    "required": [
+      "action"
+    ],
+    "properties": {
+      "action": {
+        "enum": [
+          "inspect_objects",
+          "inspect_relations",
+          "propose_program",
+          "execute_program",
+          "compare_residuals",
+          "revise_hypothesis",
+          "reject_hypothesis",
+          "commit_candidates"
+        ]
+      },
+      "arguments": {
+        "type": "object"
+      }
+    },
+    "additionalProperties": false,
+    "forbidden": [
+      "python",
+      "shell",
+      "filesystem",
+      "network",
+      "hidden_labels",
+      "unrestricted_code"
+    ]
+  }
+}

@@ -1,0 +1,9 @@
+# Laptop / no CUDA. Install AFTER quitting Discord and Chrome.
+# PyTorch CPU wheel (not the CUDA wheel):
+#   pip install torch --index-url https://download.pytorch.org/whl/cpu
+torch>=2.2.0
+transformers>=4.44.0
+peft>=0.12.0
+trl>=0.9.6
+datasets>=2.20.0
+accelerate>=0.33.0

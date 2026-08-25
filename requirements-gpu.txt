@@ -1,0 +1,7 @@
+# GPU machine only. Do not install this on the 16GB Iris Xe laptop and call the result Bond-4B.
+torch>=2.2.0
+transformers>=4.44.0
+peft>=0.12.0
+trl>=0.9.6
+datasets>=2.20.0
+accelerate>=0.33.0
