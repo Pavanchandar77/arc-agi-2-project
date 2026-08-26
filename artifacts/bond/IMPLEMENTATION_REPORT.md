@@ -1,5 +1,7 @@
 # Bond implementation report
 
+The current repo is **not** a finished general HRPS overseer. It now has a **domain-neutral core** (`src/hrps/core.py`) plus an **ARC adapter** (`src/hrps/arc_adapter.py`) that preserves the existing exact DSL executor and verifier. ARC is the first proof domain. Generality is a future empirical result.
+
 Public identity is **Bond**. The Qwen foundation is private provenance: keep those weights, do not delete them, and do not use the Qwen name as the runtime model.
 
 This document separates **infrastructure** from **learned Bond results**. There is no trained Bond checkpoint in this environment.

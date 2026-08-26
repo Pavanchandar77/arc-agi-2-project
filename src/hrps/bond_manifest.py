@@ -5,6 +5,8 @@ from src.hrps.identity import PUBLIC_NAME, QWEN_LICENSE_NOTE
 from src.hrps.package import LAYOUT, write_bond_package, write_remote_train_bundle
 
 MODULE_MAP = {
+    "hrps_core": "src.hrps.core",
+    "arc_adapter": "src.hrps.arc_adapter",
     "bond_model": "src.hrps.identity + src.hrps.backend",
     "bond_schema": "src.hrps.schema",
     "bond_overseer": "src.hrps.bond_overseer",
@@ -17,6 +19,7 @@ MODULE_MAP = {
     "executor": "src.hrps.dsl.replay",
     "verifier": "src.hrps.residual.joint_residual",
     "public_name": PUBLIC_NAME,
+    "generality": "interface-only; ARC is the first proof domain, not an assumed result",
 }
 
 __all__ = [

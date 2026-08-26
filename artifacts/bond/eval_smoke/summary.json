@@ -12,14 +12,14 @@
   "budget": {
     "temperature": 0.0,
     "top_p": 1.0,
-    "seed": 42,
+    "seed": 0,
     "max_tokens_per_call": 256,
     "max_model_calls": 8,
     "max_total_tokens": 4096,
-    "max_seconds": 30.0
+    "max_seconds": 5
   },
   "base_model": "scripted",
-  "bond_model": "Bond-smoke",
+  "bond_model": "scripted",
   "bond_present": true,
   "adapter_trained": false,
   "summaries": {
@@ -40,8 +40,8 @@
       "n_model_calls_mean": 2.0,
       "n_prompt_tokens_sum": 160,
       "n_completion_tokens_sum": 8,
-      "hrps_symbolic_seconds_sum": 0.000893,
-      "wall_clock_mean": 0.001394,
+      "hrps_symbolic_seconds_sum": 6e-05,
+      "wall_clock_mean": 0.0013,
       "peak_memory_max": 0,
       "solved_ids": [],
       "terminations": {
@@ -63,10 +63,10 @@
       "n_verifier_calls_mean": 2.0,
       "n_contradiction_resolutions_mean": 0.0,
       "n_model_calls_mean": 2.0,
-      "n_prompt_tokens_sum": 378,
+      "n_prompt_tokens_sum": 390,
       "n_completion_tokens_sum": 10,
-      "hrps_symbolic_seconds_sum": 0.000853,
-      "wall_clock_mean": 0.00133,
+      "hrps_symbolic_seconds_sum": 0.000978,
+      "wall_clock_mean": 0.002735,
       "peak_memory_max": 0,
       "solved_ids": [],
       "terminations": {
@@ -88,10 +88,10 @@
       "n_verifier_calls_mean": 0.0,
       "n_contradiction_resolutions_mean": 0.0,
       "n_model_calls_mean": 2.0,
-      "n_prompt_tokens_sum": 158,
+      "n_prompt_tokens_sum": 160,
       "n_completion_tokens_sum": 8,
-      "hrps_symbolic_seconds_sum": 2.8e-05,
-      "wall_clock_mean": 0.000378,
+      "hrps_symbolic_seconds_sum": 6.2e-05,
+      "wall_clock_mean": 0.000996,
       "peak_memory_max": 0,
       "solved_ids": [
         "synth_rot180"
@@ -115,10 +115,10 @@
       "n_verifier_calls_mean": 2.0,
       "n_contradiction_resolutions_mean": 0.0,
       "n_model_calls_mean": 4.0,
-      "n_prompt_tokens_sum": 769,
+      "n_prompt_tokens_sum": 793,
       "n_completion_tokens_sum": 20,
-      "hrps_symbolic_seconds_sum": 0.000646,
-      "wall_clock_mean": 0.001137,
+      "hrps_symbolic_seconds_sum": 0.000764,
+      "wall_clock_mean": 0.00143,
       "peak_memory_max": 0,
       "solved_ids": [
         "synth_rot180"

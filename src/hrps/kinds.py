@@ -63,6 +63,8 @@ COMPONENT_KIND: dict[str, Kind] = {
     "bond_memory": Kind.EXACT,  # hypothesis/action/observation history
     "bond_tools": Kind.EXACT,  # typed HRPS tools; unknown actions rejected
     "bond_overseer": Kind.EXACT,  # active model-controlled reasoning loop
+    "hrps_core": Kind.EXACT,  # domain-neutral contracts
+    "arc_hrps_adapter": Kind.EXACT,  # ARC environment over the existing executor
 }
 
 

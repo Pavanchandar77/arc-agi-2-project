@@ -16,9 +16,10 @@ import time
 from typing import Optional
 
 from src.hrps.abstractions import AbstractionLibrary, set_active_library
+from src.hrps.arc_adapter import ArcHRPSEnvironment
 from src.hrps.bond_memory import BondMemory
 from src.hrps.bond_tools import dispatch_tool
-from src.hrps.env import HrpsEnv
+from src.hrps.core import HRPSEnvironment, HRPSState
 from src.hrps.model import FrozenOpenModel
 from src.hrps.runner import (
     Interaction,
@@ -46,12 +47,16 @@ def run_overseer(
         set_active_library(lib)
     else:
         set_active_library(AbstractionLibrary())
-    env = HrpsEnv(task, library=lib, enable_h=enable_h, max_depth=budget.max_program_depth)
+    arc_env = ArcHRPSEnvironment(
+        task, library=lib, enable_h=enable_h, max_depth=budget.max_program_depth
+    )
+    environment: HRPSEnvironment = arc_env
+    env = arc_env.inner
     memory = BondMemory(task_id=task.task_id)
     started = time.perf_counter()
     deadline = started + budget.max_seconds
-    observe = env.observe()
-    catalog = env.catalog_text()
+    raw = environment.reset()
+    catalog = environment.catalog()
     interactions: list[Interaction] = []
     n_prompt = n_comp = tokens_used = 0
     n_invalid = consecutive_invalid = 0
@@ -67,12 +72,18 @@ def run_overseer(
         if tokens_used >= budget.max_total_tokens:
             termination = "max_tokens"
             break
+        state = HRPSState(
+            task_id=task.task_id,
+            domain=environment.domain,
+            observation_text=raw.text,
+            catalog=catalog,
+            memory_snapshot=memory.snapshot(),
+            step=step,
+        )
         prompt = (
             SYSTEM_BOND_JSON
             + "\n\n"
-            + observe.text
-            + "\n\nCATALOG:\n"
-            + catalog
+            + state.prompt_block()
             + "\n\n"
             + memory.prompt_block()
             + "\n\nJSON action:"
@@ -118,7 +129,7 @@ def run_overseer(
             continue
         consecutive_invalid = 0
         act = {"action": parsed.action.action, "arguments": parsed.action.arguments}
-        obs = dispatch_tool(env, act)
+        obs = dispatch_tool(environment, act)
         t_sym += time.perf_counter() - t0
         memory.record_action(step, act, obs)
         flags = obs.get("underconstraint_flags") or []

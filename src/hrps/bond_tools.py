@@ -1,35 +1,45 @@
 """Typed HRPS tools Bond is allowed to call.
 
-Every call is schema-validated. Unknown actions never reach the executor.
-HRPS returns exact structured observations; it does not explain the rule.
+Domain-neutral dispatch through HRPSEnvironment.execute. The ARC adapter
+is the default implementation. Unknown actions never reach any executor.
 """
 
 from __future__ import annotations
 
 from typing import Any
 
+from src.hrps.arc_adapter import ArcHRPSEnvironment, typed_action_from_payload
+from src.hrps.core import HRPSEnvironment, TypedAction
 from src.hrps.env import HrpsEnv
-from src.hrps.schema import BOND_ACTIONS, compact_observation, parse_strict_action, validate_action_dict
+from src.hrps.schema import BOND_ACTIONS
 
 
 TOOL_NAMES = BOND_ACTIONS
 
 
-def dispatch_tool(env: HrpsEnv, payload: dict[str, Any] | str) -> dict[str, Any]:
+def _as_environment(env: HRPSEnvironment | HrpsEnv) -> HRPSEnvironment:
+    if isinstance(env, HrpsEnv):
+        return ArcHRPSEnvironment.wrap(env)
+    return env
+
+
+def dispatch_tool(env: HRPSEnvironment | HrpsEnv, payload: dict[str, Any] | str) -> dict[str, Any]:
     """Validate and execute one Bond tool. Kind: exact reject of illegal calls."""
-    if isinstance(payload, str):
-        parsed = parse_strict_action(payload)
-    else:
-        parsed = validate_action_dict(payload)
-    if not parsed.ok or parsed.env_action is None:
+    environment = _as_environment(env)
+    action, err = typed_action_from_payload(payload)
+    if action is None:
         return {
             "status": "rejected",
-            "error": parsed.error or "invalid_tool",
+            "error": err or "invalid_tool",
             "uses_test_labels": False,
             "earned": False,
         }
-    fb = env.step(parsed.env_action)
-    obs = compact_observation(fb)
-    obs["earned"] = True
-    obs["tool"] = parsed.action.action if parsed.action else None
-    return obs
+    result = environment.execute(action)
+    out = dict(result.observation.payload)
+    if "status" not in out:
+        out["status"] = "ok" if result.ok else "rejected"
+    if result.error and "error" not in out:
+        out["error"] = result.error
+    out.setdefault("earned", result.earned)
+    out.setdefault("uses_test_labels", False)
+    return out

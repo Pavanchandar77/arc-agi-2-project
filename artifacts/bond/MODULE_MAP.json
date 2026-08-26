@@ -4,6 +4,8 @@
   "do_not_download_27b_to_laptop": true,
   "sft_before_rl": true,
   "modules": {
+    "hrps_core": "src.hrps.core",
+    "arc_adapter": "src.hrps.arc_adapter",
     "bond_model": "src.hrps.identity + src.hrps.backend",
     "bond_schema": "src.hrps.schema",
     "bond_overseer": "src.hrps.bond_overseer",
