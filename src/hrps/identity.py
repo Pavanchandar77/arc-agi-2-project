@@ -25,6 +25,22 @@ FOUNDATION_RUNTIME_NAME = "foundation"
 ADAPTER_MISSING = "Bond adapter not found"
 BACKEND_NAME = "bond_model_backend"
 
+
+def adapter_is_complete(path: Optional[Path]) -> bool:
+    """True only when PEFT config and adapter weights both exist.
+
+    A directory or a BOND_TRAIN.json file is not a learned Bond checkpoint.
+    """
+    if path is None:
+        return False
+    p = Path(path)
+    if not p.is_dir():
+        return False
+    has_cfg = (p / "adapter_config.json").is_file()
+    has_w = any(p.glob("adapter_model*.safetensors")) or (p / "adapter_model.bin").is_file()
+    return bool(has_cfg and has_w)
+
+
 SYSTEM_BOND_DIRECT = (
     "You are Bond. Analyze the demonstrations and emit the output grid "
     "for each test input. Output ONLY the grid as space-separated integers, "

@@ -1,9 +1,10 @@
-"""Bond SFT/LoRA/QLoRA entry point.
+"""Bond SFT native-precision LoRA entry point.
 
 First real experiment: Qwen/Qwen3.5-4B on a remote NVIDIA GPU.
 0.5B/1.5B = laptop smoke only. 27B = later ceiling, not this run.
 
 SFT first. Never overwrite the foundation. Never label 0.5B/1.5B as 4B Bond.
+This path is native fp16/bf16 + LoRA, not QLoRA / BitsAndBytes.
 """
 
 from __future__ import annotations
@@ -24,7 +25,7 @@ def main(argv: Optional[list[str]] = None) -> int:
     p.add_argument("--foundation", type=str, default="Qwen/Qwen3.5-4B")
     p.add_argument("--episodes", type=str, default=str(BOND_DIR / "train_scale" / "sft_actions.jsonl"))
     p.add_argument("--output-dir", type=str, default=str(REPO_ROOT / "models" / "bond_qwen35_4b"))
-    p.add_argument("--method", choices=("sft", "lora", "qlora"), default="qlora")
+    p.add_argument("--method", choices=("sft", "lora", "qlora"), default="lora")
     p.add_argument("--seed", type=int, default=42)
     p.add_argument("--epochs", type=int, default=3)
     p.add_argument("--learning-rate", type=float, default=2e-4)
@@ -37,12 +38,27 @@ def main(argv: Optional[list[str]] = None) -> int:
 
     spec = resolve_foundation(args.foundation)
     hw = probe_hardware()
+    method = args.method
+    if method == "qlora":
+        method = "lora"
+        print(
+            json.dumps(
+                {
+                    "warning": (
+                        "qlora was requested but this trainer is native-precision LoRA "
+                        "(fp16/bf16 + PEFT). BitsAndBytes QLoRA is not implemented. "
+                        "Continuing as lora."
+                    )
+                }
+            )
+        )
     print(
         json.dumps(
             {
                 "public_name": PUBLIC_NAME,
                 "foundation_hf_id": spec["hf_id"],
-                "method": args.method,
+                "method": method,
+                "adapter_kind": "native_precision_lora",
                 "hardware": hw,
                 "is_final_bond": False,
             },
@@ -94,8 +110,10 @@ def main(argv: Optional[list[str]] = None) -> int:
             "learning_rate": args.learning_rate,
             "max_seq_length": args.max_seq_length,
             "seed": args.seed,
-            "quantization": "4bit" if args.method == "qlora" else "none",
-            "method": args.method,
+            "quantization": "none",
+            "method": method,
+            "adapter_kind": "native_precision_lora",
+            "qlora_requested": args.method == "qlora",
             "holdout_spec": args.holdout_spec,
         },
     )

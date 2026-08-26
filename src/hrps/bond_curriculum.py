@@ -21,6 +21,73 @@ from src.hrps.separability import held_out_training_ids
 from src.hrps.synthesize import synthesize_batch
 
 CURRICULUM_DIR = REPO_ROOT / "artifacts" / "bond" / "curriculum"
+TRAIN_SCALE_SFT = REPO_ROOT / "artifacts" / "bond" / "train_scale" / "sft_actions.jsonl"
+MERGED_SFT = CURRICULUM_DIR / "sft_merged.jsonl"
+
+
+def _task_ids_from_jsonl(path: Path) -> set[str]:
+    ids: set[str] = set()
+    if not path.is_file():
+        return ids
+    for line in path.read_text(encoding="utf-8").splitlines():
+        if not line.strip():
+            continue
+        try:
+            rec = json.loads(line)
+        except json.JSONDecodeError:
+            continue
+        tid = rec.get("task_id")
+        if tid:
+            ids.add(str(tid))
+    return ids
+
+
+def verify_holdout_clean(paths: list[Path]) -> dict[str, Any]:
+    held = set(held_out_training_ids())
+    ids: set[str] = set()
+    for path in paths:
+        ids |= _task_ids_from_jsonl(path)
+    leak = sorted(ids & held)
+    return {
+        "ok": not leak,
+        "n_ids": len(ids),
+        "held_out_leaks": leak,
+        "public_evaluation_used": False,
+        "holdout_spec": "training[400:440]",
+    }
+
+
+def curriculum_artifacts_ready(
+    *,
+    curriculum_dir: Optional[Path] = None,
+    merged_path: Optional[Path] = None,
+    train_scale: Optional[Path] = None,
+) -> dict[str, Any]:
+    """Cheap check: files exist, holdout-clean, no eval split. Does not resynthesize."""
+    curriculum_dir = Path(curriculum_dir) if curriculum_dir is not None else CURRICULUM_DIR
+    merged_path = Path(merged_path) if merged_path is not None else MERGED_SFT
+    train_scale = Path(train_scale) if train_scale is not None else TRAIN_SCALE_SFT
+    sft = curriculum_dir / "sft_actions.jsonl"
+    meta = curriculum_dir / "CURRICULUM.json"
+    missing = [str(p) for p in (train_scale, sft, meta, merged_path) if not p.is_file()]
+    rec: dict[str, Any] = {
+        "ready": False,
+        "missing": missing,
+        "curriculum_dir": str(curriculum_dir),
+        "merged": str(merged_path),
+    }
+    if missing:
+        rec["reason"] = "missing_artifacts"
+        return rec
+    hold = verify_holdout_clean([sft, train_scale, merged_path])
+    rec["holdout"] = hold
+    if not hold["ok"]:
+        rec["reason"] = "holdout_leak"
+        return rec
+    rec["ready"] = True
+    rec["reason"] = "reused"
+    rec["n_sft_merged"] = sum(1 for line in merged_path.read_text(encoding="utf-8").splitlines() if line.strip())
+    return rec
 
 
 def _episodes_from_batch(

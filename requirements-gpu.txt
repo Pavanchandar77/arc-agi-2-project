@@ -1,4 +1,8 @@
 # GPU machine only. Do not install this on the 16GB Iris Xe laptop and call the result Bond-4B.
+# Native-precision LoRA (fp16/bf16 + PEFT). Not QLoRA. Do not install torchao;
+# PEFT + torchao<0.16.0 crashes LoRA injection. If present: pip uninstall -y torchao
+# Qwen3.5-4B needs a Transformers build that registers model_type qwen3_5
+# (current main at time of the Kaggle run).
 torch>=2.2.0
 transformers>=4.44.0
 peft>=0.12.0

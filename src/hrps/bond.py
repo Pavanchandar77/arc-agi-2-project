@@ -25,6 +25,7 @@ from typing import Any, Optional
 
 from src.hrps.abstractions import AbstractionLibrary, load_library_json
 from src.hrps.backend import FOUNDATIONS, hardware_gate, load_backend, resolve_foundation
+from src.hrps.identity import adapter_is_complete
 from src.hrps.elevation import DEFAULT_H_PATH, REPO_ROOT, load_held_out_tasks
 from src.hrps.episodes import (
     ACTION_SCHEMA,
@@ -223,16 +224,27 @@ def train_bond_adapter(
         warmup_ratio=float(cfg["warmup_ratio"]),
         seed=int(cfg["seed"]),
     )
+    cfg["adapter_kind"] = "native_precision_lora"
+    cfg["quantization"] = "none"
+    weights_ok = adapter_is_complete(Path(output_dir))
     (Path(output_dir) / "BOND_TRAIN.json").write_text(
         json.dumps(
             {
                 "foundation": spec,
                 "hf_id": model_name,
                 "is_final_bond": False,
+                "adapter_kind": "native_precision_lora",
+                "adapter_weights_present": weights_ok,
                 "artifact_class": "smoke_not_final_bond" if spec["id"] == "qwen1.5b_smoke" else "experimental",
                 "config": cfg,
                 "sft_sha256": file_sha256(sft_path),
                 "code_revision": code_revision(),
+                "note": (
+                    "Not a learned Bond checkpoint unless adapter_weights_present is true "
+                    "and the adapter reloads on Qwen/Qwen3.5-4B."
+                    if spec["id"] == "qwen3.5_4b"
+                    else "Not a learned Bond checkpoint unless adapter weights were saved and reloaded."
+                ),
             },
             indent=2,
         ),
@@ -244,6 +256,8 @@ def train_bond_adapter(
         "config": cfg,
         "foundation": spec,
         "is_final_bond": False,
+        "adapter_kind": "native_precision_lora",
+        "adapter_weights_present": weights_ok,
         "artifact_class": "smoke_not_final_bond" if spec["id"] == "qwen1.5b_smoke" else "experimental",
     }
 
@@ -704,12 +718,13 @@ def main(argv: Optional[list[str]] = None) -> int:
                 print(f"eval blocked: {status}", flush=True)
             else:
                 tasks = load_held_out_tasks(offset=args.offset, n=args.n)
+                eval_dir = out_dir if out_dir.resolve() != BOND_DIR.resolve() else out_dir / "eval"
                 report = run_bond_eval(
                     tasks,
                     base_model=base,
                     bond_model=bond,
                     budget=budget,
-                    out_dir=out_dir / "eval",
+                    out_dir=eval_dir,
                 )
                 print(json.dumps(report["deltas"], indent=2), flush=True)
 

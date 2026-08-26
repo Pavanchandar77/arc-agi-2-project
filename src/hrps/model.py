@@ -127,7 +127,7 @@ class CallbackModel:
 class HuggingFaceModel:
     """Lazy transformers causal LM. Requires torch in the runtime.
 
-    Optional adapter_path loads Bond LoRA/QLoRA on top of the frozen base.
+    Optional adapter_path loads Bond native-precision LoRA on top of the frozen base.
     """
 
     def __init__(
@@ -157,10 +157,12 @@ class HuggingFaceModel:
         if cuda:
             dtype = torch.bfloat16 if torch.cuda.is_bf16_supported() else torch.float16
         self.device = device or ("cuda" if cuda else "cpu")
+        from src.hrps.hf_compat import from_pretrained_dtype_kwargs
+
         self.model = AutoModelForCausalLM.from_pretrained(
             model_name,
-            torch_dtype=dtype,
             device_map="auto" if cuda else None,
+            **from_pretrained_dtype_kwargs(dtype),
             **kw,
         )
         if adapter_path:

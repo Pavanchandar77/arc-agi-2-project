@@ -3,7 +3,8 @@
   "first_real_experiment": {
     "foundation_hf_id": "Qwen/Qwen3.5-4B",
     "adapter_dir": "models/bond_qwen35_4b",
-    "method": "qlora",
+    "method": "lora",
+    "adapter_kind": "native_precision_lora",
     "seed": 42,
     "lora_r": 16,
     "lora_alpha": 32,

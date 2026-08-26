@@ -29,7 +29,7 @@
   "hierarchy": {
     "Qwen/Qwen2.5-1.5B-Instruct": "Bond-Qwen1.5B-smoke only",
     "Qwen/Qwen2.5-0.5B-Instruct": "laptop CPU LoRA",
-    "Qwen/Qwen3.5-4B": "first real Bond experiment (remote CUDA LoRA/QLoRA)",
+    "Qwen/Qwen3.5-4B": "first real Bond experiment (remote CUDA native-precision LoRA)",
     "Qwen/Qwen3.8-27B": "later high-capability run, not the first experiment",
     "deepseek-ai/DeepSeek-V4-Flash": "cluster experiment only"
   }

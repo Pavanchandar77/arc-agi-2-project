@@ -70,7 +70,7 @@ FOUNDATIONS: dict[str, dict[str, Any]] = {
         "requires_gpu": True,
         "min_ram_gb": 16,
         "first_real_bond_experiment": True,
-        "notes": "First real Bond experiment: remote CUDA LoRA/QLoRA. Not laptop smoke. 27B is later.",
+        "notes": "First real Bond experiment: remote CUDA native-precision LoRA. Not laptop smoke. 27B is later.",
     },
     "qwen38_27b": {
         "id": "qwen38_27b",

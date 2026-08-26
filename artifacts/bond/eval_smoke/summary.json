@@ -40,8 +40,8 @@
       "n_model_calls_mean": 2.0,
       "n_prompt_tokens_sum": 160,
       "n_completion_tokens_sum": 8,
-      "hrps_symbolic_seconds_sum": 0.000132,
-      "wall_clock_mean": 0.001777,
+      "hrps_symbolic_seconds_sum": 0.000192,
+      "wall_clock_mean": 0.001906,
       "peak_memory_max": 0,
       "solved_ids": [],
       "terminations": {
@@ -66,7 +66,7 @@
       "n_prompt_tokens_sum": 625,
       "n_completion_tokens_sum": 0,
       "hrps_symbolic_seconds_sum": 0,
-      "wall_clock_mean": 0.021469,
+      "wall_clock_mean": 0.014506,
       "peak_memory_max": 0,
       "solved_ids": [
         "synth_rot180"
@@ -92,8 +92,8 @@
       "n_model_calls_mean": 2.0,
       "n_prompt_tokens_sum": 160,
       "n_completion_tokens_sum": 8,
-      "hrps_symbolic_seconds_sum": 0.000139,
-      "wall_clock_mean": 0.003604,
+      "hrps_symbolic_seconds_sum": 0.000276,
+      "wall_clock_mean": 0.002708,
       "peak_memory_max": 0,
       "solved_ids": [
         "synth_rot180"
@@ -120,7 +120,7 @@
       "n_prompt_tokens_sum": 625,
       "n_completion_tokens_sum": 0,
       "hrps_symbolic_seconds_sum": 0,
-      "wall_clock_mean": 0.02568,
+      "wall_clock_mean": 0.015652,
       "peak_memory_max": 0,
       "solved_ids": [
         "synth_rot180"

@@ -1,38 +1,130 @@
-"""Fine-Tuning Pipeline for ARC-AGI-2 with LoRA & TRL SFTTrainer.
+"""Bond-4B native-precision LoRA training (Transformers 5 / current TRL).
 
-Model: Qwen/Qwen2.5-1.5B-Instruct (Instruct checkpoint with built-in ChatML template).
-Architecture & Optimization:
-- Full precision / native mixed precision (no 4-bit/8-bit quantization or bitsandbytes)
-- LoRA adapter (r=16, lora_alpha=32, targeting q/k/v/o/gate/up/down proj)
-- Optimizer: optim="adamw_torch"
-- use_gradient_checkpointing=False
-- TRL SFTTrainer for ChatML instruction tuning
+Foundation for the Bond experiment is Qwen/Qwen3.5-4B when launched via
+scripts/train_bond_qwen35_4b.py or scripts/train_bond_lightning.py.
+This module does not swap that id.
 
-Note: Designed to run on remote GPU environment (Google Colab / Kaggle / Cloud GPU).
-Do not execute locally on CPU.
+Architecture:
+- Native fp16/bf16 load (no BitsAndBytes, not QLoRA)
+- LoRA adapter (q/k/v/o/gate/up/down)
+- TRL SFTTrainer + SFTConfig when available
+- device_map="auto" is model-parallel shard placement, not torchrun DDP
+
+Do not call the result a learned Bond checkpoint until adapter weights
+are saved under the declared output_dir and reloaded.
 """
+
+from __future__ import annotations
 
 import argparse
 import logging
 import os
 import sys
 from pathlib import Path
-from typing import Optional
+from typing import Any, Optional
 
-# Ensure repository root is in sys.path
 REPO_ROOT = Path(__file__).resolve().parent.parent
 if str(REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(REPO_ROOT))
+
+from src.hrps.hf_compat import (
+    NATIVE_LORA,
+    build_sft_config_kwargs,
+    build_sft_trainer_kwargs,
+    filter_to_signature,
+    from_pretrained_dtype_kwargs,
+    make_formatting_func,
+    neutralize_incompatible_torchao,
+    param_names,
+    preview_formatted_example,
+)
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s")
 logger = logging.getLogger(__name__)
 
 
+def _resolve_sft_config_class():
+    try:
+        from trl import SFTConfig
+
+        return SFTConfig
+    except Exception:
+        from transformers import TrainingArguments
+
+        return TrainingArguments
+
+
+def construct_sft_config(
+    *,
+    output_dir: str,
+    batch_size: int,
+    gradient_accumulation_steps: int,
+    learning_rate: float,
+    warmup_ratio: float,
+    max_seq_length: int,
+    num_train_epochs: int,
+    logging_steps: int,
+    save_steps: int,
+    has_eval: bool,
+    use_fp16: bool,
+    use_bf16: bool,
+    seed: int,
+    config_class: Any = None,
+) -> Any:
+    cls = config_class or _resolve_sft_config_class()
+    params = param_names(cls)
+    kwargs = build_sft_config_kwargs(
+        params,
+        output_dir=output_dir,
+        batch_size=batch_size,
+        gradient_accumulation_steps=gradient_accumulation_steps,
+        learning_rate=learning_rate,
+        warmup_ratio=warmup_ratio,
+        max_seq_length=max_seq_length,
+        num_train_epochs=num_train_epochs,
+        logging_steps=logging_steps,
+        save_steps=save_steps,
+        has_eval=has_eval,
+        use_fp16=use_fp16,
+        use_bf16=use_bf16,
+        seed=seed,
+    )
+    kwargs = filter_to_signature(cls, kwargs)
+    return cls(**kwargs)
+
+
+def construct_sft_trainer(
+    *,
+    model: Any,
+    args: Any,
+    train_dataset: Any,
+    eval_dataset: Any,
+    tokenizer: Any,
+    formatting_func: Any,
+    trainer_class: Any = None,
+) -> Any:
+    if trainer_class is None:
+        from trl import SFTTrainer
+
+        trainer_class = SFTTrainer
+    params = param_names(trainer_class)
+    kwargs = build_sft_trainer_kwargs(
+        params,
+        model=model,
+        args=args,
+        train_dataset=train_dataset,
+        eval_dataset=eval_dataset,
+        tokenizer=tokenizer,
+        formatting_func=formatting_func,
+    )
+    return trainer_class(**kwargs)
+
+
 def train(
     train_file: str = "data/processed/arc_train.jsonl",
     val_file: Optional[str] = "data/processed/arc_val.jsonl",
-    model_name: str = "Qwen/Qwen2.5-1.5B-Instruct",
-    output_dir: str = "models/arc_qwen_1.5b_lora",
+    model_name: str = "Qwen/Qwen3.5-4B",
+    output_dir: str = "models/bond_qwen35_4b",
     max_seq_length: int = 2048,
     lora_r: int = 16,
     lora_alpha: int = 32,
@@ -44,150 +136,163 @@ def train(
     warmup_ratio: float = 0.05,
     logging_steps: int = 10,
     save_steps: int = 100,
-    seed: int = 42
+    seed: int = 42,
 ):
-    """Fine-tune Qwen2.5-1.5B-Instruct with LoRA on ARC-AGI-2 without quantization."""
+    """Native-precision LoRA SFT. Public warmup_ratio stays 0.05 (5%)."""
     import torch
     from datasets import load_dataset
-    from transformers import (
-        AutoModelForCausalLM,
-        AutoTokenizer,
-        TrainingArguments,
-    )
-    from peft import LoraConfig, get_peft_model
-    from trl import SFTTrainer
+    from transformers import AutoModelForCausalLM, AutoTokenizer
 
+    torchao_state = neutralize_incompatible_torchao()
+    logger.info("torchao_guard=%s", torchao_state)
+
+    from peft import LoraConfig, get_peft_model
+
+    n_gpu = int(torch.cuda.device_count()) if torch.cuda.is_available() else 0
     if not torch.cuda.is_available():
         logger.warning(
-            "CUDA is not available on this system! "
-            "train.py is configured for remote GPU environments (Colab / Kaggle)."
+            "CUDA is not available. Bond-4B training is a remote GPU job. "
+            "device_map='auto' is model-parallel placement, not torchrun DDP."
+        )
+    else:
+        names = [torch.cuda.get_device_name(i) for i in range(n_gpu)]
+        logger.info(
+            "CUDA ok n_gpu=%s names=%s. device_map='auto' shards the model "
+            "across GPUs (model parallel), it does not launch two DDP processes.",
+            n_gpu,
+            names,
         )
 
-    logger.info(f"Loading tokenizer & model from '{model_name}' (no quantization)...")
+    logger.info(
+        "Loading tokenizer & model from '%s' (%s, no BitsAndBytes)",
+        model_name,
+        NATIVE_LORA,
+    )
 
-    # 1. Tokenizer (Instruct checkpoint includes chat template natively)
     tokenizer = AutoTokenizer.from_pretrained(model_name, trust_remote_code=True)
     if tokenizer.pad_token is None:
         tokenizer.pad_token = tokenizer.eos_token
 
-    # 2. Base Model (Full / Native Precision, No bitsandbytes / quantization)
     device_available = torch.cuda.is_available()
-    torch_dtype = torch.bfloat16 if (device_available and torch.cuda.is_bf16_supported()) else (torch.float16 if device_available else torch.float32)
-
+    load_dtype = (
+        torch.bfloat16
+        if (device_available and torch.cuda.is_bf16_supported())
+        else (torch.float16 if device_available else torch.float32)
+    )
     model = AutoModelForCausalLM.from_pretrained(
         model_name,
-        torch_dtype=torch_dtype,
         device_map="auto" if device_available else None,
         trust_remote_code=True,
+        **from_pretrained_dtype_kwargs(load_dtype),
     )
 
-    # 3. LoRA Configuration (q/k/v/o/gate/up/down proj)
     lora_config = LoraConfig(
         r=lora_r,
         lora_alpha=lora_alpha,
         lora_dropout=lora_dropout,
         target_modules=["q_proj", "k_proj", "v_proj", "o_proj", "gate_proj", "up_proj", "down_proj"],
         bias="none",
-        task_type="CAUSAL_LM"
+        task_type="CAUSAL_LM",
     )
     model = get_peft_model(model, lora_config)
     model.print_trainable_parameters()
 
-    # 4. Load Datasets
-    logger.info(f"Loading training data from {train_file}...")
+    logger.info("Loading training data from %s", train_file)
     data_files = {"train": train_file}
     if val_file and os.path.exists(val_file):
         data_files["validation"] = val_file
-        logger.info(f"Loading validation data from {val_file}...")
+        logger.info("Loading validation data from %s", val_file)
 
     raw_datasets = load_dataset("json", data_files=data_files)
     train_dataset = raw_datasets["train"]
     val_dataset = raw_datasets.get("validation", None)
 
-    # 5. Format Prompts with Native Chat Template
-    def formatting_prompts_func(example):
-        output_texts = []
-        if "messages" in example and isinstance(example["messages"][0], list):
-            for msgs in example["messages"]:
-                formatted = tokenizer.apply_chat_template(msgs, tokenize=False, add_generation_prompt=False)
-                output_texts.append(formatted)
-        elif "messages" in example and isinstance(example["messages"], list):
-            formatted = tokenizer.apply_chat_template(example["messages"], tokenize=False, add_generation_prompt=False)
-            output_texts.append(formatted)
-        elif "prompt" in example and "completion" in example:
-            for p, c in zip(example["prompt"], example["completion"]):
-                output_texts.append(f"{p}\n{c}{tokenizer.eos_token}")
-        return output_texts
+    formatting_prompts_func = make_formatting_func(tokenizer)
+    sample = train_dataset[0]
+    preview = preview_formatted_example(sample, tokenizer)
+    logger.info(
+        "formatted_example kind=%s chars=%s tokens=%s preview=%r",
+        preview["kind"],
+        preview["chars"],
+        preview["n_tokens"],
+        preview["preview"][:240],
+    )
+    if preview.get("looks_like_python_repr"):
+        raise ValueError(
+            "formatted SFT example looks like a raw Python repr; refusing to train. "
+            "Expected a chat-template string from the messages field."
+        )
+    if preview.get("n_tokens") and preview["n_tokens"] > max_seq_length:
+        logger.warning(
+            "formatted example tokens=%s exceed max_length=%s; sequences will truncate",
+            preview["n_tokens"],
+            max_seq_length,
+        )
 
-    # 6. Training Arguments (optim="adamw_torch", use_gradient_checkpointing=False)
     use_bf16 = device_available and torch.cuda.is_bf16_supported()
     use_fp16 = device_available and not use_bf16
-
-    training_args = TrainingArguments(
+    training_args = construct_sft_config(
         output_dir=output_dir,
-        per_device_train_batch_size=batch_size,
-        per_device_eval_batch_size=batch_size,
+        batch_size=batch_size,
         gradient_accumulation_steps=gradient_accumulation_steps,
         learning_rate=learning_rate,
-        lr_scheduler_type="cosine",
         warmup_ratio=warmup_ratio,
+        max_seq_length=max_seq_length,
         num_train_epochs=num_train_epochs,
         logging_steps=logging_steps,
-        save_strategy="steps",
         save_steps=save_steps,
-        save_total_limit=2,
-        evaluation_strategy="steps" if val_dataset is not None else "no",
-        eval_steps=save_steps if val_dataset is not None else None,
-        fp16=use_fp16,
-        bf16=use_bf16,
-        optim="adamw_torch",                 # Explicitly adamw_torch as requested
-        gradient_checkpointing=False,        # Explicitly False as requested
-        weight_decay=0.01,
+        has_eval=val_dataset is not None,
+        use_fp16=use_fp16,
+        use_bf16=use_bf16,
         seed=seed,
-        report_to="none",
     )
+    logger.info("sft_config_class=%s adapter=%s", type(training_args).__name__, NATIVE_LORA)
 
-    # 7. SFT Trainer
-    trainer = SFTTrainer(
+    trainer = construct_sft_trainer(
         model=model,
-        tokenizer=tokenizer,
+        args=training_args,
         train_dataset=train_dataset,
         eval_dataset=val_dataset,
+        tokenizer=tokenizer,
         formatting_func=formatting_prompts_func,
-        max_seq_length=max_seq_length,
-        dataset_text_field=None,
-        args=training_args,
     )
 
-    # 8. Train & Save
-    logger.info("Starting fine-tuning...")
+    logger.info("Starting native-precision LoRA fine-tuning...")
     trainer.train()
 
-    logger.info(f"Saving LoRA adapter to {output_dir}...")
+    logger.info("Saving LoRA adapter to %s", output_dir)
+    Path(output_dir).mkdir(parents=True, exist_ok=True)
     trainer.model.save_pretrained(output_dir)
     tokenizer.save_pretrained(output_dir)
-    logger.info("Fine-tuning completed successfully!")
+    adapter_ok = any(Path(output_dir).glob("adapter_model*.safetensors")) or any(
+        Path(output_dir).glob("adapter_model.bin")
+    )
+    logger.info("Fine-tuning completed. adapter_weights_present=%s", adapter_ok)
+    if not adapter_ok:
+        logger.warning("Adapter files were not found after save; do not call this a learned Bond checkpoint.")
 
 
 def main():
-    parser = argparse.ArgumentParser(description="Fine-tune Qwen2.5-1.5B-Instruct on ARC-AGI-2 with LoRA & SFTTrainer.")
-    parser.add_argument("--train-file", type=str, default="data/processed/arc_train.jsonl", help="Path to arc_train.jsonl")
-    parser.add_argument("--val-file", type=str, default="data/processed/arc_val.jsonl", help="Path to arc_val.jsonl")
-    parser.add_argument("--model-name", type=str, default="Qwen/Qwen2.5-1.5B-Instruct", help="Hugging Face model ID.")
-    parser.add_argument("--output-dir", type=str, default="models/arc_qwen_1.5b_lora", help="Output directory for LoRA adapter.")
-    parser.add_argument("--epochs", type=int, default=3, help="Training epochs.")
-    parser.add_argument("--batch-size", type=int, default=2, help="Batch size per device.")
-    parser.add_argument("--grad-accum", type=int, default=4, help="Gradient accumulation steps.")
-    parser.add_argument("--lr", type=float, default=2e-4, help="Learning rate.")
-    parser.add_argument("--max-seq-len", type=int, default=2048, help="Max sequence length.")
-    parser.add_argument("--lora-r", type=int, default=16, help="LoRA rank.")
-    parser.add_argument("--lora-alpha", type=int, default=32, help="LoRA alpha.")
-    parser.add_argument("--seed", type=int, default=42, help="Random seed.")
+    parser = argparse.ArgumentParser(
+        description="Native-precision LoRA SFT. Bond-4B launcher pins Qwen/Qwen3.5-4B."
+    )
+    parser.add_argument("--train-file", type=str, default="artifacts/bond/train_scale/sft_actions.jsonl")
+    parser.add_argument("--val-file", type=str, default="")
+    parser.add_argument("--model-name", type=str, default="Qwen/Qwen3.5-4B")
+    parser.add_argument("--output-dir", type=str, default="models/bond_qwen35_4b")
+    parser.add_argument("--epochs", type=int, default=3)
+    parser.add_argument("--batch-size", type=int, default=2)
+    parser.add_argument("--grad-accum", type=int, default=4)
+    parser.add_argument("--lr", type=float, default=2e-4)
+    parser.add_argument("--max-seq-len", type=int, default=2048)
+    parser.add_argument("--lora-r", type=int, default=16)
+    parser.add_argument("--lora-alpha", type=int, default=32)
+    parser.add_argument("--seed", type=int, default=42)
     args = parser.parse_args()
-
+    val = args.val_file if args.val_file and os.path.exists(args.val_file) else None
     train(
         train_file=args.train_file,
-        val_file=args.val_file if os.path.exists(args.val_file) else None,
+        val_file=val,
         model_name=args.model_name,
         output_dir=args.output_dir,
         num_train_epochs=args.epochs,
@@ -197,7 +302,7 @@ def main():
         max_seq_length=args.max_seq_len,
         lora_r=args.lora_r,
         lora_alpha=args.lora_alpha,
-        seed=args.seed
+        seed=args.seed,
     )
 
 
