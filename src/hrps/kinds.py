@@ -65,6 +65,14 @@ COMPONENT_KIND: dict[str, Kind] = {
     "bond_overseer": Kind.EXACT,  # active model-controlled reasoning loop
     "hrps_core": Kind.EXACT,  # domain-neutral contracts
     "arc_hrps_adapter": Kind.EXACT,  # ARC environment over the existing executor
+    "bond_l1_language": Kind.EXACT,  # closed Bond-L1 operator set; A–G stays frozen
+    "bond_role_ops": Kind.EXACT,  # smallest/largest/singleton defined by area; ties refuse
+    "bond_guided_search": Kind.HEURISTIC,  # residual-ordered beam; verifier is exact
+    "bond_test_time_compute": Kind.HEURISTIC,  # extra nodes/time; not an admissible bound
+    "bond_synthesizer": Kind.EXACT,  # program → grids → task; labels known by construction
+    "bond_verifier_reward": Kind.EXACT,  # joint exact + gold-free underconstraint; no test gold
+    "bond_engine": Kind.EXACT,  # search + verify + optional model loop; commit is exact
+    "bond_curriculum": Kind.LEARNED,  # which synthesized traces become SFT
 }
 
 

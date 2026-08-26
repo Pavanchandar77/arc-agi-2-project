@@ -85,7 +85,7 @@ class ArcHRPSEnvironment:
     def verify(self, candidate: Candidate) -> VerificationResult:
         """Joint-demonstration exactness only. No test gold in the result shown to the agent."""
         text = candidate.payload if isinstance(candidate.payload, str) else str(candidate.payload)
-        program, err = parse_program(text)
+        program, err = parse_program(text, max_depth=self.inner.max_depth)
         if program is None or err:
             return VerificationResult(joint_exact=False, details={"error": err or "parse_error"})
         preds = tuple(replay(program, p.input) for p in self.task.train)

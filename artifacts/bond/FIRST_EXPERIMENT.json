@@ -1,0 +1,36 @@
+{
+  "public_name": "Bond",
+  "first_real_experiment": {
+    "foundation_hf_id": "Qwen/Qwen3.5-4B",
+    "adapter_dir": "models/bond_qwen35_4b",
+    "method": "qlora",
+    "seed": 42,
+    "lora_r": 16,
+    "lora_alpha": 32,
+    "lora_dropout": 0.05,
+    "epochs": 3,
+    "learning_rate": 0.0002,
+    "max_seq_length": 2048,
+    "holdout_spec": "training[400:440]",
+    "episodes": "artifacts/bond/train_scale/sft_actions.jsonl",
+    "where": "remote NVIDIA GPU, not this Iris Xe laptop"
+  },
+  "not_this_run": {
+    "Qwen2.5-0.5B": "laptop CPU smoke only",
+    "Qwen2.5-1.5B": "laptop/code-path smoke only",
+    "Qwen3.8-27B": "later ceiling, after 4B Bond exists"
+  },
+  "is_final_bond": false,
+  "language": {
+    "id": "bond_l1",
+    "max_depth": 4,
+    "phase1_d3_untouched": true,
+    "foundation_hf_id": "Qwen/Qwen3.5-4B"
+  },
+  "lightning": {
+    "script": "scripts/train_bond_lightning.py",
+    "curriculum": "artifacts/bond/curriculum",
+    "note": "On Lightning: pip install -r requirements-gpu.txt && python scripts/train_bond_lightning.py then python -m src.hrps.bond eval --foundation qwen3.5_4b --adapter models/bond_qwen35_4b --n 40 --offset 400"
+  },
+  "note": "4B is the Bond foundation for this system. Do not silently train 0.5B/1.5B and write models/bond_qwen35_4b. Bond-L1 is a new language; Phase-1 conclusions are not edited."
+}

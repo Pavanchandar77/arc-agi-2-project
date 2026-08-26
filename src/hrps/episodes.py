@@ -78,6 +78,17 @@ FAMILY_HYPOTHESIS = {
     "gravity": "pack non-background cells toward a side",
     "isolate_largest": "isolate the largest object",
     "isolate_smallest": "isolate the smallest object",
+    "recolor_smallest_to_largest_color": "recolor the unique smallest object to the largest object's color",
+    "recolor_largest_to_smallest_color": "recolor the unique largest object to the smallest object's color",
+    "erase_smallest": "erase the unique smallest object",
+    "erase_largest": "erase the unique largest object",
+    "recolor_all_fg_to_smallest_color": "recolor all foreground to the unique smallest object's color",
+    "recolor_nonsingleton_to_singleton_color": "recolor larger objects to the unique singleton color",
+    "keep_least_frequent_color": "keep the unique least frequent non-background color",
+    "keep_most_frequent_nonbg": "keep the unique most frequent non-background color",
+    "recolor_least_frequent_to_most_frequent": "recolor the rarest color to the most frequent color",
+    "translate_fg": "translate foreground by one cell",
+    "center_fg": "center the foreground bounding box",
     "abs": "apply a named exact abstraction",
 }
 
@@ -217,10 +228,10 @@ def teacher_hrps_episode(
     include_competing: bool = True,
 ) -> Optional[BondEpisode]:
     """Replay a known program through the env as a teacher trajectory."""
-    program, err = parse_program(program_text)
+    program, err = parse_program(program_text, max_depth=8)
     if program is None or err or not program.ops:
         return None
-    env = HrpsEnv(task, library=library, enable_h=enable_h)
+    env = HrpsEnv(task, library=library, enable_h=enable_h, max_depth=max(4, program.depth()))
     observe = env.observe()
     catalog = env.catalog_text()
     turns: list[BondTurn] = []
@@ -307,7 +318,7 @@ def teacher_hrps_episode(
 
 def teacher_direct_episode(task: ArcTask, program_text: str, test_transfer: Optional[bool]) -> Optional[BondEpisode]:
     """M0-style target: emit the program's test-input image. Uses training-split labels only."""
-    program, err = parse_program(program_text)
+    program, err = parse_program(program_text, max_depth=8)
     if program is None or err or not program.ops:
         return None
     if not task.test:

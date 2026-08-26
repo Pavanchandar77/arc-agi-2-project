@@ -48,7 +48,7 @@ def serialize_task_raw(task: ArcTask) -> str:
     return "\n".join(parts)
 
 
-def parse_program(text: str) -> tuple[Optional[Program], str]:
+def parse_program(text: str, *, max_depth: Optional[int] = None) -> tuple[Optional[Program], str]:
     """Parse a DSL program. Reject unknown operators. Kind: exact."""
     raw = text.strip()
     raw = raw.strip("`").strip()
@@ -66,8 +66,9 @@ def parse_program(text: str) -> tuple[Optional[Program], str]:
         ops = parse_program_text(raw)
     except Exception as exc:
         return None, f"parse_error:{exc}"
-    if len(ops) > _MAX_DEPTH:
-        return None, f"depth_exceeded:{len(ops)}>{_MAX_DEPTH}"
+    cap = _MAX_DEPTH if max_depth is None else int(max_depth)
+    if len(ops) > cap:
+        return None, f"depth_exceeded:{len(ops)}>{cap}"
     for op in ops:
         if op.name not in LEGAL_OP_NAMES:
             return None, f"unknown_op:{op.name}"
@@ -229,11 +230,12 @@ class HrpsEnv:
 
     def catalog_text(self) -> str:
         lines = [
-            "HRPS DSL (compose with ' | ', depth <= 3). Execution is exact.",
+            f"HRPS DSL (compose with ' | ', depth <= {self.max_depth}). Execution is exact.",
             "Unary geom: rot90 rot180 rot270 flip_h flip_v transpose anti_transpose",
             "Crop/size: crop_fg:<bg> left_half right_half top_half bottom_half tile:<nr>x<nc> upscale:<k> downscale:<k>",
             "Color: recolor:<src>,<dst> swap_colors:<a>,<b> keep_color:<c>,<bg> apply_colormap:<a-b;c-d;...>",
             "Objects: fill_holes:<bg> outline:<bg> gravity:<dir>,<bg> isolate_largest:<conn>,<t|f>,<bg> isolate_smallest:<conn>,<t|f>,<bg>",
+            "Bond-L1 role/count: recolor_smallest_to_largest_color recolor_largest_to_smallest_color erase_smallest erase_largest recolor_all_fg_to_smallest_color recolor_nonsingleton_to_singleton_color keep_least_frequent_color keep_most_frequent_nonbg recolor_least_frequent_to_most_frequent translate_fg:<dir>,<bg> center_fg:<bg>",
             "conn is 4 or 8; t/f is color-agnostic; dir 0=N 1=E 2=S 3=W; colors 0-9.",
         ]
         if self.enable_h and self.library.items:
@@ -467,7 +469,7 @@ class HrpsEnv:
         return tuple(preds), residual
 
     def _apply(self, text: str) -> EnvFeedback:
-        program, err = parse_program(text)
+        program, err = parse_program(text, max_depth=self.max_depth)
         if program is None:
             return self._reject("apply", err or "parse_error", {"program_text": text})
         if program.depth() > self.max_depth:
@@ -503,7 +505,10 @@ class HrpsEnv:
         return fb
 
     def _commit(self, text: str) -> EnvFeedback:
-        program, err = parse_program(text if text.strip() else (self._last_program.serialize() if self._last_program else "identity"))
+        program, err = parse_program(
+            text if text.strip() else (self._last_program.serialize() if self._last_program else "identity"),
+            max_depth=self.max_depth,
+        )
         if program is None:
             return self._reject("commit", err or "parse_error")
         if "abs" in program.names() and not self.enable_h:

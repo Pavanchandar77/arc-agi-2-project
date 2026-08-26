@@ -232,7 +232,21 @@ def run_system(
         raise ValueError(f"unknown system {system}")
     if system.endswith("_direct"):
         return run_direct(task, model, budget, system=system)
-    return run_hrps(task, model, budget, system=system, library=library)
+    from src.hrps.bond_engine import run_bond_engine
+    from src.hrps.language import bond_l1_budget
+
+    return run_bond_engine(
+        task,
+        model,
+        system=system,
+        search_budget=bond_l1_budget(
+            nodes=800,
+            seconds=min(8.0, float(budget.max_seconds)),
+            frontier=8000,
+        ),
+        loop_budget=budget,
+        run_overseer_loop=True,
+    )
 
 
 def _finalize(

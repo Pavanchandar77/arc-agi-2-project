@@ -15,6 +15,7 @@ from dataclasses import dataclass, field
 from typing import Any, Optional
 
 from src.hrps.dsl import (
+    BOND_ROLE_NAMES,
     GEOM_UNARY,
     MIN_OP_COST,
     OP_DEFS,
@@ -360,7 +361,7 @@ def search_task(
         expanded_with_ops += 1
         # Reserve exact generators and the finite geometry family before the
         # per-node cap. Residual-guided ops may follow; they must not starve D8.
-        reserved_names = ("apply_colormap", "abs") + GEOM_UNARY
+        reserved_names = ("apply_colormap", "abs") + GEOM_UNARY + BOND_ROLE_NAMES
         reserved = [op for op in ops if op.name in reserved_names]
         rest = [op for op in ops if op.name not in reserved_names]
         cap = max(budget.max_ops_per_node, len(reserved))
@@ -413,14 +414,16 @@ def search_task(
             tel.nodes_generated += 1
             tel.raw_states += 1
 
+            duplicate = False
             if cfg.continuation_dedup:
                 sig = continuation_signature(child_preds, cfg.stage, family)
                 if sig in seen:
                     tel.duplicate_states += 1
                     tel.dominance_prunes += 1
-                    continue
-                seen.add(sig)
-                tel.unique_signatures = len(seen)
+                    duplicate = True
+                else:
+                    seen.add(sig)
+                    tel.unique_signatures = len(seen)
 
             spec = node.spec if node.spec is not None else (specs[0] if specs else None)
             # Inner-loop residual is pixel/shape only (exact). Object/relation
@@ -437,11 +440,15 @@ def search_task(
             )
             next_id += 1
             if child_res.all_exact:
+                # Jointly exact programs that share train preds can differ on
+                # test inputs. Dedup must not drop them; that would be a false merge.
                 maybe_record(child, "")
                 if child_cost < best_feasible_cost:
                     best_feasible_cost = child_cost
             elif cfg.require_joint_solution and child_res.n_exact > 0 and child_res.n_exact < child_res.n_demos:
                 tel.consistency_prunes += 1
+            if duplicate:
+                continue
             if len(heap) >= budget.max_frontier:
                 tel.hit_frontier_limit = True
                 break

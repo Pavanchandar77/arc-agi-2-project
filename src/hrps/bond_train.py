@@ -1,9 +1,9 @@
 """Bond SFT/LoRA/QLoRA entry point.
 
-  python -m src.hrps.bond_train --foundation Qwen/Qwen3.8-27B ...
+First real experiment: Qwen/Qwen3.5-4B on a remote NVIDIA GPU.
+0.5B/1.5B = laptop smoke only. 27B = later ceiling, not this run.
 
-SFT first. Do not mix GRPO/DPO into this baseline. Never overwrite the
-foundation. Never download 27B onto the laptop.
+SFT first. Never overwrite the foundation. Never label 0.5B/1.5B as 4B Bond.
 """
 
 from __future__ import annotations
@@ -21,17 +21,17 @@ from src.hrps.identity import PUBLIC_NAME
 
 def main(argv: Optional[list[str]] = None) -> int:
     p = argparse.ArgumentParser(description="Bond SFT adapter training")
-    p.add_argument("--foundation", type=str, default="Qwen/Qwen3.8-27B")
+    p.add_argument("--foundation", type=str, default="Qwen/Qwen3.5-4B")
     p.add_argument("--episodes", type=str, default=str(BOND_DIR / "train_scale" / "sft_actions.jsonl"))
-    p.add_argument("--output-dir", type=str, default=str(REPO_ROOT / "models" / "bond_qwen38_27b"))
+    p.add_argument("--output-dir", type=str, default=str(REPO_ROOT / "models" / "bond_qwen35_4b"))
     p.add_argument("--method", choices=("sft", "lora", "qlora"), default="qlora")
     p.add_argument("--seed", type=int, default=42)
-    p.add_argument("--epochs", type=int, default=1)
+    p.add_argument("--epochs", type=int, default=3)
     p.add_argument("--learning-rate", type=float, default=2e-4)
     p.add_argument("--lora-r", type=int, default=16)
     p.add_argument("--lora-alpha", type=int, default=32)
     p.add_argument("--lora-dropout", type=float, default=0.05)
-    p.add_argument("--max-seq-length", type=int, default=4096)
+    p.add_argument("--max-seq-length", type=int, default=2048)
     p.add_argument("--holdout-spec", type=str, default="training[400:440]")
     args = p.parse_args(argv)
 

@@ -42,6 +42,19 @@ from src.hrps.grid import (
 )
 from src.hrps.kinds import Kind
 from src.hrps.representation import extract_objects
+from src.hrps.role_ops import (
+    center_fg,
+    erase_largest,
+    erase_smallest,
+    keep_least_frequent_color,
+    keep_most_frequent_nonbg,
+    recolor_all_fg_to_smallest_color,
+    recolor_largest_to_smallest_color,
+    recolor_least_frequent_to_most_frequent,
+    recolor_nonsingleton_to_singleton_color,
+    recolor_smallest_to_largest_color,
+    translate_fg,
+)
 from src.hrps.task import ArcTask
 
 
@@ -185,16 +198,52 @@ _reg(OpDef(
     _exec_colormap,
 ))
 
+# Bond-L1 exact role/count/motion ops. Not generated under stages A–G.
+_reg(OpDef("recolor_smallest_to_largest_color", (DslType.GRID, DslType.CONNECTIVITY, DslType.BOOL, DslType.BG), DslType.GRID, FrameEffect.RECOLOR, 5, Kind.EXACT, "unique smallest and largest objects, distinct colors", lambda g, conn, agn, bg: _ok(recolor_smallest_to_largest_color(g, conn, agn, bg))))
+_reg(OpDef("recolor_largest_to_smallest_color", (DslType.GRID, DslType.CONNECTIVITY, DslType.BOOL, DslType.BG), DslType.GRID, FrameEffect.RECOLOR, 5, Kind.EXACT, "unique smallest and largest objects, distinct colors", lambda g, conn, agn, bg: _ok(recolor_largest_to_smallest_color(g, conn, agn, bg))))
+_reg(OpDef("erase_smallest", (DslType.GRID, DslType.CONNECTIVITY, DslType.BOOL, DslType.BG), DslType.GRID, FrameEffect.OBJECT, 4, Kind.EXACT, "unique smallest object", lambda g, conn, agn, bg: _ok(erase_smallest(g, conn, agn, bg))))
+_reg(OpDef("erase_largest", (DslType.GRID, DslType.CONNECTIVITY, DslType.BOOL, DslType.BG), DslType.GRID, FrameEffect.OBJECT, 4, Kind.EXACT, "unique largest object", lambda g, conn, agn, bg: _ok(erase_largest(g, conn, agn, bg))))
+_reg(OpDef("recolor_all_fg_to_smallest_color", (DslType.GRID, DslType.CONNECTIVITY, DslType.BOOL, DslType.BG), DslType.GRID, FrameEffect.RECOLOR, 5, Kind.EXACT, "unique smallest object color", lambda g, conn, agn, bg: _ok(recolor_all_fg_to_smallest_color(g, conn, agn, bg))))
+_reg(OpDef("recolor_nonsingleton_to_singleton_color", (DslType.GRID, DslType.CONNECTIVITY, DslType.BOOL, DslType.BG), DslType.GRID, FrameEffect.RECOLOR, 5, Kind.EXACT, "exactly one area-1 object and at least one larger object", lambda g, conn, agn, bg: _ok(recolor_nonsingleton_to_singleton_color(g, conn, agn, bg))))
+_reg(OpDef("keep_least_frequent_color", (DslType.GRID, DslType.BG), DslType.GRID, FrameEffect.FILTER, 5, Kind.EXACT, "unique non-bg color of least frequency", lambda g, bg: _ok(keep_least_frequent_color(g, bg))))
+_reg(OpDef("keep_most_frequent_nonbg", (DslType.GRID, DslType.BG), DslType.GRID, FrameEffect.FILTER, 5, Kind.EXACT, "unique non-bg color of greatest frequency", lambda g, bg: _ok(keep_most_frequent_nonbg(g, bg))))
+_reg(OpDef("recolor_least_frequent_to_most_frequent", (DslType.GRID, DslType.BG), DslType.GRID, FrameEffect.RECOLOR, 5, Kind.EXACT, "unique rarest and unique most-frequent non-bg colors", lambda g, bg: _ok(recolor_least_frequent_to_most_frequent(g, bg))))
+_reg(OpDef("translate_fg", (DslType.GRID, DslType.INT, DslType.BG), DslType.GRID, FrameEffect.OBJECT, 3, Kind.EXACT, "dir in {0,1,2,3}; all fg stay in bounds", lambda g, d, bg: _ok(translate_fg(g, d, bg))))
+_reg(OpDef("center_fg", (DslType.GRID, DslType.BG), DslType.GRID, FrameEffect.OBJECT, 4, Kind.EXACT, "fg bbox can be uniquely centered", lambda g, bg: _ok(center_fg(g, bg))))
+
 GEOM_UNARY = ("rot90", "rot180", "rot270", "flip_h", "flip_v", "transpose", "anti_transpose")
 HALF_UNARY = ("left_half", "right_half", "top_half", "bottom_half")
+BOND_ROLE_NAMES = (
+    "recolor_smallest_to_largest_color",
+    "recolor_largest_to_smallest_color",
+    "erase_smallest",
+    "erase_largest",
+    "recolor_all_fg_to_smallest_color",
+    "recolor_nonsingleton_to_singleton_color",
+    "keep_least_frequent_color",
+    "keep_most_frequent_nonbg",
+    "recolor_least_frequent_to_most_frequent",
+    "translate_fg",
+    "center_fg",
+)
 MIN_OP_COST = 2
 
 # Residual-domain families used by stage F (heuristic prioritization).
 DOMAIN_OPS = {
-    "shape": frozenset({"crop_fg", "tile", "upscale", "downscale", *HALF_UNARY}),
-    "object": frozenset({"isolate_largest", "isolate_smallest", "fill_holes", "outline", "gravity", "keep_color"}),
-    "pixel": frozenset({"recolor", "swap_colors", "apply_colormap", *GEOM_UNARY}),
-    "relation": frozenset({"gravity", "isolate_largest", "isolate_smallest", *GEOM_UNARY}),
+    "shape": frozenset({"crop_fg", "tile", "upscale", "downscale", "center_fg", *HALF_UNARY}),
+    "object": frozenset({
+        "isolate_largest", "isolate_smallest", "fill_holes", "outline", "gravity", "keep_color",
+        "erase_smallest", "erase_largest", "translate_fg", "center_fg",
+        "recolor_nonsingleton_to_singleton_color",
+    }),
+    "pixel": frozenset({
+        "recolor", "swap_colors", "apply_colormap",
+        "recolor_smallest_to_largest_color", "recolor_largest_to_smallest_color",
+        "recolor_all_fg_to_smallest_color", "recolor_least_frequent_to_most_frequent",
+        "keep_least_frequent_color", "keep_most_frequent_nonbg",
+        *GEOM_UNARY,
+    }),
+    "relation": frozenset({"gravity", "isolate_largest", "isolate_smallest", "translate_fg", "center_fg", *GEOM_UNARY}),
 }
 
 
@@ -298,6 +347,7 @@ class SearchStageConfig:
     score_joint: bool = True
     require_joint_solution: bool = True
     abstractions: tuple = ()
+    bond_language: bool = False
 
 
 def stage_config(stage: str, abstractions: tuple = ()) -> SearchStageConfig:
@@ -337,7 +387,17 @@ def stage_config(stage: str, abstractions: tuple = ()) -> SearchStageConfig:
             score_joint=True,
             abstractions=abstractions,
         )
-    raise ValueError(f"unknown stage {stage!r}; expected A–G")
+    if stage in {"L", "L1", "BOND"}:
+        return SearchStageConfig(
+            "L",
+            object_specs=BANK_D,
+            residual_factorization=True,
+            continuation_dedup=True,
+            score_joint=True,
+            abstractions=abstractions,
+            bond_language=True,
+        )
+    raise ValueError(f"unknown stage {stage!r}; expected A–G or L")
 
 
 def _bg_candidates(task: ArcTask) -> tuple[int, ...]:
@@ -420,6 +480,22 @@ def generate_ops(
                 _add(Op("gravity", (d, bg)))
             _add(Op("isolate_largest", (conn, agn, bg)))
             _add(Op("isolate_smallest", (conn, agn, bg)))
+    if cfg.bond_language:
+        for bg in bgs:
+            _add(Op("keep_least_frequent_color", (bg,)))
+            _add(Op("keep_most_frequent_nonbg", (bg,)))
+            _add(Op("recolor_least_frequent_to_most_frequent", (bg,)))
+            _add(Op("center_fg", (bg,)))
+            for d in (0, 1, 2, 3):
+                _add(Op("translate_fg", (d, bg)))
+            for conn in (4, 8):
+                agn = False
+                _add(Op("recolor_smallest_to_largest_color", (conn, agn, bg)))
+                _add(Op("recolor_largest_to_smallest_color", (conn, agn, bg)))
+                _add(Op("erase_smallest", (conn, agn, bg)))
+                _add(Op("erase_largest", (conn, agn, bg)))
+                _add(Op("recolor_all_fg_to_smallest_color", (conn, agn, bg)))
+                _add(Op("recolor_nonsingleton_to_singleton_color", (conn, agn, bg)))
     if cfg.residual_factorization and dominant_domain in DOMAIN_OPS:
         preferred = DOMAIN_OPS[dominant_domain]
         head = [op for op in ops if op.name in preferred]

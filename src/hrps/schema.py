@@ -174,7 +174,7 @@ def validate_action_dict(blob: dict[str, Any], *, raw: str = "") -> ParseResult:
     if forb:
         return ParseResult(False, error=forb)
     if "program" in args:
-        prog, err = parse_program(str(args["program"]))
+        prog, err = parse_program(str(args["program"]), max_depth=8)
         if prog is None or err:
             return ParseResult(False, error=err or "invalid_program")
         for op in prog.ops:

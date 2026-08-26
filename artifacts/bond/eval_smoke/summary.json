@@ -40,8 +40,8 @@
       "n_model_calls_mean": 2.0,
       "n_prompt_tokens_sum": 160,
       "n_completion_tokens_sum": 8,
-      "hrps_symbolic_seconds_sum": 6e-05,
-      "wall_clock_mean": 0.0013,
+      "hrps_symbolic_seconds_sum": 0.000132,
+      "wall_clock_mean": 0.001777,
       "peak_memory_max": 0,
       "solved_ids": [],
       "terminations": {
@@ -50,11 +50,11 @@
     },
     "base_hrps": {
       "n": 1,
-      "solved": 0,
-      "solve_rate": 0.0,
-      "joint_demo_exact": 0,
-      "pass2": 0,
-      "pass2_rate": 0.0,
+      "solved": 1,
+      "solve_rate": 1.0,
+      "joint_demo_exact": 1,
+      "pass2": 1,
+      "pass2_rate": 1.0,
       "valid_formal_action_rate_mean": 1.0,
       "n_distinct_hypotheses_mean": 0.0,
       "n_hypothesis_revisions_mean": 0.0,
@@ -62,13 +62,15 @@
       "n_representation_requests_mean": 0.0,
       "n_verifier_calls_mean": 2.0,
       "n_contradiction_resolutions_mean": 0.0,
-      "n_model_calls_mean": 2.0,
-      "n_prompt_tokens_sum": 390,
-      "n_completion_tokens_sum": 10,
-      "hrps_symbolic_seconds_sum": 0.000978,
-      "wall_clock_mean": 0.002735,
+      "n_model_calls_mean": 7.0,
+      "n_prompt_tokens_sum": 625,
+      "n_completion_tokens_sum": 0,
+      "hrps_symbolic_seconds_sum": 0,
+      "wall_clock_mean": 0.021469,
       "peak_memory_max": 0,
-      "solved_ids": [],
+      "solved_ids": [
+        "synth_rot180"
+      ],
       "terminations": {
         "committed": null
       }
@@ -90,8 +92,8 @@
       "n_model_calls_mean": 2.0,
       "n_prompt_tokens_sum": 160,
       "n_completion_tokens_sum": 8,
-      "hrps_symbolic_seconds_sum": 6.2e-05,
-      "wall_clock_mean": 0.000996,
+      "hrps_symbolic_seconds_sum": 0.000139,
+      "wall_clock_mean": 0.003604,
       "peak_memory_max": 0,
       "solved_ids": [
         "synth_rot180"
@@ -108,17 +110,17 @@
       "pass2": 1,
       "pass2_rate": 1.0,
       "valid_formal_action_rate_mean": 1.0,
-      "n_distinct_hypotheses_mean": 1.0,
+      "n_distinct_hypotheses_mean": 0.0,
       "n_hypothesis_revisions_mean": 0.0,
       "n_hypothesis_rejections_mean": 0.0,
-      "n_representation_requests_mean": 1.0,
+      "n_representation_requests_mean": 0.0,
       "n_verifier_calls_mean": 2.0,
       "n_contradiction_resolutions_mean": 0.0,
-      "n_model_calls_mean": 4.0,
-      "n_prompt_tokens_sum": 793,
-      "n_completion_tokens_sum": 20,
-      "hrps_symbolic_seconds_sum": 0.000764,
-      "wall_clock_mean": 0.00143,
+      "n_model_calls_mean": 7.0,
+      "n_prompt_tokens_sum": 625,
+      "n_completion_tokens_sum": 0,
+      "hrps_symbolic_seconds_sum": 0,
+      "wall_clock_mean": 0.02568,
       "peak_memory_max": 0,
       "solved_ids": [
         "synth_rot180"
@@ -133,12 +135,12 @@
     "learned_model_gain": true,
     "substrate_gain": false,
     "base_direct": 0,
-    "base_hrps": 0,
+    "base_hrps": 1,
     "bond_direct": 1,
     "bond_hrps": 1,
     "delta_train_bond_direct_minus_base_direct": 1,
     "delta_substrate_bond_hrps_minus_bond_direct": 0,
-    "delta_harness_base_hrps_minus_base_direct": 0,
+    "delta_harness_base_hrps_minus_base_direct": 1,
     "delta_full_bond_hrps_minus_base_direct": 1,
     "criterion": "A learned-model gain requires bond_direct > base_direct after adapter weights changed. A substrate gain requires bond_hrps > bond_direct. A wrapper-only score is not a Bond result."
   },
@@ -151,8 +153,8 @@
         "termination": "direct_done"
       },
       "base_hrps": {
-        "solved": false,
-        "joint_demo_exact": false,
+        "solved": true,
+        "joint_demo_exact": true,
         "termination": "committed"
       },
       "bond_direct": {

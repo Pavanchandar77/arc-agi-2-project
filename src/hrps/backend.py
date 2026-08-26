@@ -69,7 +69,8 @@ FOUNDATIONS: dict[str, dict[str, Any]] = {
         "local_ok": False,
         "requires_gpu": True,
         "min_ram_gb": 16,
-        "notes": "Small remote-training / CPU-inference control. Not the 27B Bond foundation.",
+        "first_real_bond_experiment": True,
+        "notes": "First real Bond experiment: remote CUDA LoRA/QLoRA. Not laptop smoke. 27B is later.",
     },
     "qwen38_27b": {
         "id": "qwen38_27b",
@@ -82,7 +83,7 @@ FOUNDATIONS: dict[str, dict[str, Any]] = {
         "refuse_local_download": True,
         "min_ram_gb": 64,
         "min_disk_gb": 80,
-        "notes": "Primary serious Bond foundation (Apache-2.0). Train adapter remotely. Never download to the laptop.",
+        "notes": "Later high-capability Bond foundation. Not the first experiment. Never download to the laptop.",
     },
     "deepseek_v4_flash": {
         "id": "deepseek_v4_flash",

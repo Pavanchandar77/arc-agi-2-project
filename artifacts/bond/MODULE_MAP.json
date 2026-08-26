@@ -1,6 +1,7 @@
 {
   "public_name": "Bond",
-  "primary_foundation": "Qwen/Qwen3.8-27B",
+  "first_real_bond_experiment": "Qwen/Qwen3.5-4B",
+  "later_ceiling_foundation": "Qwen/Qwen3.8-27B",
   "do_not_download_27b_to_laptop": true,
   "sft_before_rl": true,
   "modules": {
@@ -15,14 +16,21 @@
     "bond_train": "src.hrps.bond_train",
     "bond_eval": "src.hrps.bond_eval",
     "bond_manifest": "src.hrps.bond_manifest",
+    "bond_l1_language": "src.hrps.language",
+    "bond_role_ops": "src.hrps.role_ops",
+    "bond_guided_search": "src.hrps.guided_search",
+    "bond_engine": "src.hrps.bond_engine",
+    "bond_synthesizer": "src.hrps.synthesize",
+    "bond_verifier_reward": "src.hrps.bond_reward",
+    "bond_curriculum": "src.hrps.bond_curriculum",
     "executor": "src.hrps.dsl.replay",
     "verifier": "src.hrps.residual.joint_residual"
   },
   "hierarchy": {
     "Qwen/Qwen2.5-1.5B-Instruct": "Bond-Qwen1.5B-smoke only",
     "Qwen/Qwen2.5-0.5B-Instruct": "laptop CPU LoRA",
-    "Qwen/Qwen3.5-4B": "small remote / CPU-inference control",
-    "Qwen/Qwen3.8-27B": "primary serious Bond foundation",
+    "Qwen/Qwen3.5-4B": "first real Bond experiment (remote CUDA LoRA/QLoRA)",
+    "Qwen/Qwen3.8-27B": "later high-capability run, not the first experiment",
     "deepseek-ai/DeepSeek-V4-Flash": "cluster experiment only"
   }
 }

@@ -94,7 +94,16 @@ def test_run_system_uses_overseer():
     )
     res = run_system(_task(), model, "base_hrps", RunnerBudget(max_model_calls=8, max_seconds=5))
     assert res.episode.solved is True
-    assert res.episode.telemetry.get("overseer") is True
+    guided = (res.episode.telemetry or {}).get("guided") or {}
+    assert guided.get("language") == "bond_l1" or res.episode.telemetry.get("overseer") is True
+
+
+def test_first_real_bond_experiment_is_4b():
+    spec = resolve_foundation("Qwen/Qwen3.5-4B")
+    assert spec["id"] == "qwen3.5_4b"
+    assert spec.get("first_real_bond_experiment") is True
+    twenty7 = resolve_foundation("Qwen/Qwen3.8-27B")
+    assert twenty7.get("first_real_bond_experiment") is not True
 
 
 def test_qwen38_27b_not_downloaded_locally():

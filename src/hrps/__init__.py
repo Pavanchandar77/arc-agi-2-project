@@ -3,8 +3,9 @@
 Phase 1 is the instrumented finite-DSL search microscope (A–G, then H).
 Open-model elevation (M0–M3) lives in src.hrps.elevation. Bond is the
 active model-system: identity, schema, overseer, memory, tools, SFT train,
-four-way eval. See src.hrps.bond_manifest.MODULE_MAP. Phase-1 conclusions
-remain in src.hrps.conclusions.
+four-way eval, Bond-L1 engine. See src.hrps.bond_manifest.MODULE_MAP.
+Phase-1 conclusions remain in src.hrps.conclusions. Bond-L1 is a new
+language; it does not edit those conclusions.
 """
 
 from src.hrps.conclusions import FROZEN_CONCLUSIONS, NEXT_CHANGE_POLICY
