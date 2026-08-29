@@ -78,9 +78,14 @@ if MODEL_DIR is None:
 TOTAL_SECONDS = float(os.environ.get("ARC_TOTAL_SECONDS", 11 * 3600))
 TTT_STEPS = 0
 
+# Kaggle grades whatever lands in /kaggle/working; off Kaggle it does not exist,
+# and the write would fail only at the final flush, after the whole run.
+WORKING = Path("/kaggle/working") if Path("/kaggle/working").is_dir() else Path(".")
+SUBMISSION = WORKING / "submission.json"
+
 argv = [
     "--challenges", str(CHALLENGES),
-    "--output", "/kaggle/working/submission.json",
+    "--output", str(SUBMISSION),
     "--total-seconds", str(TOTAL_SECONDS),
     "--symbolic-fraction", "0.15",
     "--symbolic-per-task", "20",
@@ -101,7 +106,7 @@ print("exit code:", exit_code)
 
 
 # %% [cell] 4. Verify before submitting
-submission = json.loads(Path("/kaggle/working/submission.json").read_text())
+submission = json.loads(SUBMISSION.read_text())
 expected = sorted(json.loads(Path(CHALLENGES).read_text()))
 
 problems = validate_submission(submission, expected)

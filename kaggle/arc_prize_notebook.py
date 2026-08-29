@@ -60,9 +60,16 @@ print("challenges:", find_challenges())
 TOTAL_SECONDS = float(os.environ.get("ARC_TOTAL_SECONDS", 11 * 3600))
 PER_TASK_SECONDS = 60.0
 
+# Kaggle grades whatever lands in /kaggle/working. Off Kaggle that directory
+# does not exist, and writing there would fail only at the final flush, after
+# the whole run. Falling back to the cwd keeps the notebook runnable locally,
+# which is the only way to test it before spending a competition submission.
+WORKING = Path("/kaggle/working") if Path("/kaggle/working").is_dir() else Path(".")
+SUBMISSION = WORKING / "submission.json"
+
 config = build_config(
     [
-        "--output", "/kaggle/working/submission.json",
+        "--output", str(SUBMISSION),
         "--total-seconds", str(TOTAL_SECONDS),
         "--per-task-seconds", str(PER_TASK_SECONDS),
         "--workers", str(os.cpu_count() or 4),
@@ -75,7 +82,7 @@ print(json.dumps(report, indent=2))
 # %% [cell] 3. Verify before submitting
 # A missing task id scores the entire submission zero, so check explicitly
 # rather than trusting the run report.
-submission = json.loads(Path("/kaggle/working/submission.json").read_text())
+submission = json.loads(SUBMISSION.read_text())
 expected = sorted(json.loads(Path(find_challenges()).read_text()))
 
 problems = validate_submission(submission, expected)
