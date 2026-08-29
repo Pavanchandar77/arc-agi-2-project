@@ -133,6 +133,12 @@ def build_sft_config_kwargs(
         "seed": seed,
         "report_to": "none",
     }
+    # TRL >= 0.20 defaults completion_only_loss=True and refuses a
+    # formatting_func alongside it, because formatting produces a plain
+    # language-modelling dataset with no prompt/completion boundary to mask on.
+    # We format, so the loss is over the whole sequence.
+    if "completion_only_loss" in params:
+        kw["completion_only_loss"] = False
     kw.update(warmup_kwargs(params, warmup_ratio))
     kw.update(max_length_kwargs(params, max_seq_length))
     strategy = "steps" if has_eval else "no"
@@ -174,21 +180,33 @@ def build_sft_trainer_kwargs(
     return kw
 
 
+def _flatten_messages(msgs: list[dict[str, Any]], eos: str) -> str:
+    """Plain-text rendering for base checkpoints that ship no chat template."""
+    parts = [f"{m.get('role', 'user')}: {m.get('content', '')}" for m in msgs]
+    return "\n".join(parts) + eos
+
+
 def make_formatting_func(tokenizer: Any) -> Callable[[dict[str, Any]], Any]:
-    """Chat-template formatter. Single conversational example returns a str."""
+    """Chat-template formatter. Single conversational example returns a str.
+
+    Base (non-instruct) checkpoints have no chat template, and
+    apply_chat_template raises rather than degrading, so fall back to a plain
+    role-prefixed rendering instead of failing the whole training run.
+    """
+
+    def render(msgs: list[dict[str, Any]]) -> str:
+        eos = getattr(tokenizer, "eos_token", "") or ""
+        if not getattr(tokenizer, "chat_template", None):
+            return _flatten_messages(msgs, eos)
+        return tokenizer.apply_chat_template(msgs, tokenize=False, add_generation_prompt=False)
 
     def formatting_prompts_func(example: dict[str, Any]):
         if "messages" in example:
             msgs = example["messages"]
             if msgs and isinstance(msgs[0], dict):
-                return tokenizer.apply_chat_template(
-                    msgs, tokenize=False, add_generation_prompt=False
-                )
+                return render(msgs)
             if msgs and isinstance(msgs[0], list):
-                return [
-                    tokenizer.apply_chat_template(m, tokenize=False, add_generation_prompt=False)
-                    for m in msgs
-                ]
+                return [render(m) for m in msgs]
         if "prompt" in example and "completion" in example:
             prompt, completion = example["prompt"], example["completion"]
             eos = getattr(tokenizer, "eos_token", "") or ""

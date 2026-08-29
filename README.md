@@ -4,11 +4,19 @@ An offline symbolic solver for ARC-AGI, a Kaggle submission runner built to
 survive the competition environment, and an LLM fine-tuning stack for the work
 that the symbolic layer cannot reach.
 
-## Kaggle in one command
+## One command each
 
 ```bash
+python scripts/train_bond.py      # deps, data, dataset, LoRA training, adapter
 python -m src.kaggle_run          # finds the data, writes submission.json
 ```
+
+`scripts/train_bond.py` takes no required arguments. It detects Colab, Kaggle
+or local, installs what is missing, clones the ARC data, picks a model that
+fits the GPU it actually finds, builds the augmented dataset, trains, and saves
+the adapter. Each stage is skipped when its output already exists, so a
+disconnect resumes rather than restarting. `colab_train.ipynb` is the same
+thing as a notebook; `--dry-run` prints the plan without doing any of it.
 
 Full notebook instructions, including the no-upload bundle route, are in
 [`kaggle/README.md`](kaggle/README.md). The runner is CPU-only, needs no
@@ -75,6 +83,22 @@ separator-split panels, panel selection, symmetry repair and occlusion fill,
 object selection/recolouring/filtering, colour remapping by frequency rank,
 row-column deduplication, borders, denoising, constant outputs, and a
 last-resort local neighbourhood lookup.
+
+### Measured: augmented voting does not help the bank
+
+`src/hrps/voting.py` solves a task under several D8 + colour frames and votes
+on the back-transformed predictions. On ARC-AGI-1 evaluation with 8 frames it
+scored **38/400, exactly the same 38 tasks as without it**, for 7.3x the
+runtime (50s to 369s).
+
+The reason is that the bank is already frame-invariant: the D8 family tries all
+eight symmetries internally, every object family iterates background candidates,
+and the colour families learn their mappings from the data. Re-solving a
+transformed copy supplies information the bank already had.
+
+So `--vote-frames` defaults to 0 on the symbolic path. The module stays because
+the property it exploits — frame sensitivity — is real for a language model
+even though it is absent here, which makes the LLM layer its correct home.
 
 ---
 

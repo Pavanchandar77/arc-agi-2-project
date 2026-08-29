@@ -55,6 +55,7 @@ class RunConfig:
     stage: str
     limit: Optional[int]
     verbose: bool
+    vote_frames: int = 0
 
 
 def find_challenges(explicit: Optional[str] = None) -> Path:
@@ -184,7 +185,7 @@ def _worker(payload: tuple) -> dict[str, Any]:
     """
     import signal
 
-    task_id, raw, seconds, use_search, stage = payload
+    task_id, raw, seconds, use_search, stage, vote_frames = payload
     armed = False
     try:
         signal.signal(signal.SIGALRM, _on_alarm)
@@ -194,7 +195,13 @@ def _worker(payload: tuple) -> dict[str, Any]:
         pass
     try:
         task = parse_task(task_id, raw, "test")
-        outcome = solve_task(task, seconds=seconds, use_search=use_search, search_stage=stage)
+        outcome = solve_task(
+            task,
+            seconds=seconds,
+            use_search=use_search,
+            search_stage=stage,
+            vote_frames=vote_frames,
+        )
         return {
             "task_id": task_id,
             "entry": submission_entry(outcome),
@@ -284,6 +291,7 @@ def run(config: RunConfig) -> dict[str, Any]:
                                 budget_for(cursor),
                                 config.use_search,
                                 config.stage,
+                                config.vote_frames,
                             ),
                         ),
                     )
@@ -324,7 +332,14 @@ def run(config: RunConfig) -> dict[str, Any]:
                     print("[kaggle_run] global deadline reached; stopping", flush=True)
                 break
             result = _worker(
-                (task_id, raw_payload[task_id], budget_for(idx), config.use_search, config.stage)
+                (
+                    task_id,
+                    raw_payload[task_id],
+                    budget_for(idx),
+                    config.use_search,
+                    config.stage,
+                    config.vote_frames,
+                )
             )
             submission[result["task_id"]] = result["entry"]
             metas.append(result["meta"])
@@ -420,6 +435,12 @@ def build_config(argv: Optional[list[str]] = None) -> RunConfig:
     p.add_argument("--workers", type=int, default=0, help="0 = one per CPU")
     p.add_argument("--no-search", action="store_true", help="solver bank only")
     p.add_argument("--stage", default="L")
+    p.add_argument(
+        "--vote-frames",
+        type=int,
+        default=0,
+        help="solve under N D8/colour frames and vote (0 or 1 disables voting)",
+    )
     p.add_argument("--limit", type=int, default=None)
     p.add_argument("--quiet", action="store_true")
     args = p.parse_args(argv)
@@ -442,6 +463,7 @@ def build_config(argv: Optional[list[str]] = None) -> RunConfig:
         stage=args.stage,
         limit=args.limit,
         verbose=not args.quiet,
+        vote_frames=args.vote_frames,
     )
 
 

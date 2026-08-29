@@ -74,8 +74,14 @@ def solve_task(
     seconds: float = 30.0,
     use_search: bool = True,
     search_stage: str = "L",
+    vote_frames: int = 0,
 ) -> SolveOutcome:
-    """Solve one task within `seconds`. Total: any exception becomes a fallback."""
+    """Solve one task within `seconds`. Total: any exception becomes a fallback.
+
+    `vote_frames > 1` solves the task under that many D8/colour frames and votes
+    on the back-transformed predictions. Frame 0 is the identity, so voting is a
+    superset of the plain bank pass and replaces it rather than adding to it.
+    """
     started = time.perf_counter()
     deadline = started + max(0.5, seconds)
     test_inputs = task.test_inputs()
@@ -88,29 +94,50 @@ def solve_task(
     error = ""
 
     # Layer 1: exact solver bank. Cheap, so it always runs first.
-    try:
-        bank_deadline = min(deadline, started + max(1.0, seconds * 0.5))
-        for rule in fit_rules(task, deadline=bank_deadline):
-            for i, inp in enumerate(test_inputs):
-                if len(per_test[i]) >= 2:
-                    continue
-                try:
-                    pred = rule.predict(inp)
-                except Exception:
-                    continue
-                if pred is None or not is_valid_grid(pred):
-                    continue
-                if pred not in per_test[i]:
-                    per_test[i].append(pred)
-                    if rule.name not in rules_used:
-                        rules_used.append(rule.name)
-            if all(len(p) >= 2 for p in per_test):
-                break
-        if any(per_test):
-            source = "solver_bank"
-            verified = True
-    except Exception as exc:  # pragma: no cover - defensive
-        error = f"bank:{type(exc).__name__}"
+    bank_deadline = min(deadline, started + max(1.0, seconds * 0.5))
+    if vote_frames > 1:
+        try:
+            from src.hrps.voting import solve_with_voting
+
+            (a1, a2), report = solve_with_voting(
+                task, n_frames=vote_frames, deadline=bank_deadline
+            )
+            for i in range(len(test_inputs)):
+                for grid in (a1[i], a2[i]):
+                    if grid is not None and is_valid_grid(grid) and grid not in per_test[i]:
+                        per_test[i].append(grid)
+            if any(per_test):
+                source = "voting"
+                verified = True
+                rules_used.append(
+                    f"frames={report.n_frames_with_prediction}/{report.n_frames_run}"
+                    f" agreement={report.agreement:.2f}"
+                )
+        except Exception as exc:  # pragma: no cover - defensive
+            error = f"voting:{type(exc).__name__}"
+    else:
+        try:
+            for rule in fit_rules(task, deadline=bank_deadline):
+                for i, inp in enumerate(test_inputs):
+                    if len(per_test[i]) >= 2:
+                        continue
+                    try:
+                        pred = rule.predict(inp)
+                    except Exception:
+                        continue
+                    if pred is None or not is_valid_grid(pred):
+                        continue
+                    if pred not in per_test[i]:
+                        per_test[i].append(pred)
+                        if rule.name not in rules_used:
+                            rules_used.append(rule.name)
+                if all(len(p) >= 2 for p in per_test):
+                    break
+            if any(per_test):
+                source = "solver_bank"
+                verified = True
+        except Exception as exc:  # pragma: no cover - defensive
+            error = f"bank:{type(exc).__name__}"
 
     # Layer 2: DSL search, only for the slots the bank left empty.
     if use_search and not all(len(p) >= 2 for p in per_test):
@@ -137,8 +164,8 @@ def solve_task(
                     verified = True
                     if source == "fallback":
                         source = "dsl_search"
-                    elif source == "solver_bank":
-                        source = "solver_bank+dsl_search"
+                    else:
+                        source = f"{source}+dsl_search"
                     for attempt in res.attempts[:2]:
                         for i, grid_l in enumerate(attempt):
                             if i >= len(per_test) or len(per_test[i]) >= 2:
