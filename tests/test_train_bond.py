@@ -68,9 +68,11 @@ def test_no_gpu_falls_back_to_the_smallest_model():
 
 
 def test_explicit_model_on_the_ladder_keeps_its_tuned_batch_size():
+    # Its own tuned pair, not the one the (much smaller) VRAM would have picked.
+    tuned = {model: (bs, ga) for _, model, bs, ga in MODEL_LADDER}["Qwen/Qwen3-4B"]
     model, batch, accum = choose_model({"cuda": True, "vram_free_gb": 4.0}, "Qwen/Qwen3-4B")
     assert model == "Qwen/Qwen3-4B"
-    assert (batch, accum) == (2, 8)
+    assert (batch, accum) == tuned
 
 
 def test_explicit_model_off_the_ladder_gets_conservative_settings():
@@ -101,3 +103,68 @@ def test_truncate_is_a_noop_when_the_file_is_already_short(tmp_path: Path):
     path.write_text('{"i":0}\n{"i":1}\n')
     _truncate(path, 10)
     assert len(path.read_text().strip().splitlines()) == 2
+
+
+# --------------------------------------------------------------------------
+# Truncation preflight
+# --------------------------------------------------------------------------
+
+
+def _write_rows(path: Path, char_lengths: list[int]) -> None:
+    import json as _json
+
+    with path.open("w", encoding="utf-8") as fh:
+        for n in char_lengths:
+            fh.write(_json.dumps({"messages": [{"role": "user", "content": "x" * n}]}) + "\n")
+
+
+def test_truncation_rate_counts_examples_over_the_budget(tmp_path: Path):
+    from scripts.train_bond import CHARS_PER_TOKEN, truncation_rate
+
+    budget = 100
+    over, under = int(budget * CHARS_PER_TOKEN) + 50, int(budget * CHARS_PER_TOKEN) - 50
+    path = tmp_path / "d.jsonl"
+    _write_rows(path, [over, over, under, under])
+    rate, longest = truncation_rate(path, budget)
+    assert rate == 0.5
+    assert longest == over
+
+
+def test_truncation_rate_falls_to_zero_as_the_budget_grows(tmp_path: Path):
+    from scripts.train_bond import truncation_rate
+
+    path = tmp_path / "d.jsonl"
+    _write_rows(path, [2000, 4000, 8000])
+    assert truncation_rate(path, 512)[0] > truncation_rate(path, 8192)[0]
+    assert truncation_rate(path, 8192)[0] == 0.0
+
+
+def test_truncation_rate_survives_a_malformed_line(tmp_path: Path):
+    path = tmp_path / "d.jsonl"
+    path.write_text('{"messages":[{"role":"user","content":"xx"}]}\nnot json\n', encoding="utf-8")
+    from scripts.train_bond import truncation_rate
+
+    rate, longest = truncation_rate(path, 1024)
+    assert rate == 0.0 and longest == 2
+
+
+def test_truncation_rate_on_an_empty_file_is_zero(tmp_path: Path):
+    from scripts.train_bond import truncation_rate
+
+    path = tmp_path / "d.jsonl"
+    path.write_text("", encoding="utf-8")
+    assert truncation_rate(path, 1024) == (0.0, 0)
+
+
+def test_default_sequence_length_fits_the_bulk_of_arc_examples():
+    # 2048 was measured to cut 16-22% of examples mid-grid; the default moved up.
+    from scripts.train_bond import DEFAULT_MAX_SEQ_LENGTH
+
+    assert DEFAULT_MAX_SEQ_LENGTH >= 4096
+
+
+def test_ladder_keeps_a_constant_effective_batch():
+    from scripts.train_bond import MODEL_LADDER
+
+    effective = {bs * ga for _, _, bs, ga in MODEL_LADDER}
+    assert len(effective) == 1, f"effective batch varies across the ladder: {effective}"

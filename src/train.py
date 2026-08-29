@@ -69,6 +69,7 @@ def construct_sft_config(
     use_fp16: bool,
     use_bf16: bool,
     seed: int,
+    gradient_checkpointing: bool = False,
     config_class: Any = None,
 ) -> Any:
     cls = config_class or _resolve_sft_config_class()
@@ -137,6 +138,7 @@ def train(
     logging_steps: int = 10,
     save_steps: int = 100,
     seed: int = 42,
+    gradient_checkpointing: bool = False,
 ):
     """Native-precision LoRA SFT. Public warmup_ratio stays 0.05 (5%)."""
     import torch
@@ -245,6 +247,7 @@ def train(
         use_fp16=use_fp16,
         use_bf16=use_bf16,
         seed=seed,
+        gradient_checkpointing=gradient_checkpointing,
     )
     logger.info("sft_config_class=%s adapter=%s", type(training_args).__name__, NATIVE_LORA)
 

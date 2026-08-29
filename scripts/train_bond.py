@@ -40,16 +40,29 @@ ARC1_REPO = "https://github.com/fchollet/ARC-AGI.git"
 ARC2_REPO = "https://github.com/arcprize/ARC-AGI-2.git"
 
 # (min free VRAM in GB, model id, per-device batch size, grad accumulation).
-# Ordered largest first; the first entry that fits wins. Sizes are deliberately
-# conservative: LoRA activations at 2048 tokens cost more than the weights.
+# Ordered largest first; the first entry that fits wins. Batch sizes assume
+# DEFAULT_MAX_SEQ_LENGTH and keep the effective batch at 16 throughout, so the
+# learning rate stays comparable across the ladder. Activations dominate at
+# these sequence lengths, which is why even 60 GB runs a per-device batch of 1.
 MODEL_LADDER = (
     (60, "Qwen/Qwen3-14B", 1, 16),
     (36, "Qwen/Qwen3-8B", 1, 16),
-    (20, "Qwen/Qwen3-4B", 2, 8),
-    (12, "Qwen/Qwen2.5-3B-Instruct", 2, 8),
-    (7, "Qwen/Qwen2.5-1.5B-Instruct", 4, 4),
-    (0, "Qwen/Qwen2.5-0.5B-Instruct", 4, 4),
+    (20, "Qwen/Qwen3-4B", 1, 16),
+    (12, "Qwen/Qwen2.5-3B-Instruct", 1, 16),
+    (7, "Qwen/Qwen2.5-1.5B-Instruct", 2, 8),
+    (0, "Qwen/Qwen2.5-0.5B-Instruct", 2, 8),
 )
+
+# ARC-AGI-2 grids are large. Measured over the built dataset, a 2048-token
+# budget truncates 16-22% of examples mid-grid, which teaches the model to emit
+# cut-off answers; 4096 truncates under 4%, and 8192 truncates none. 4096 is the
+# default because 8192 doubles activation memory for the last few percent.
+DEFAULT_MAX_SEQ_LENGTH = 4096
+
+# Rough bytes-per-character of the serialized prompts under a BPE tokenizer on
+# digit grids. Only used to warn about truncation before a run, never to size
+# anything, so an approximation is fine.
+CHARS_PER_TOKEN = 2.5
 
 REQUIRED = ("torch", "transformers", "peft", "trl", "datasets", "accelerate")
 
@@ -176,6 +189,31 @@ def build_dataset(data_dir: Path, out_dir: Path, aug_factor: int, max_tasks: Opt
     return train_file, val_file
 
 
+def truncation_rate(path: Path, max_seq_length: int) -> tuple[float, int]:
+    """Estimated share of examples that will not fit, and the longest seen.
+
+    A truncated ARC example loses the tail of the answer grid, so the model is
+    trained to stop mid-output. That is worse than dropping the example, and it
+    is silent, so it is worth an explicit check before a GPU run.
+    """
+    budget_chars = max_seq_length * CHARS_PER_TOKEN
+    lengths: list[int] = []
+    with path.open(encoding="utf-8") as handle:
+        for line in handle:
+            try:
+                row = json.loads(line)
+            except Exception:
+                continue
+            if "messages" in row:
+                lengths.append(sum(len(m.get("content", "")) for m in row["messages"]))
+            elif "prompt" in row:
+                lengths.append(len(row.get("prompt", "")) + len(row.get("completion", "")))
+    if not lengths:
+        return 0.0, 0
+    over = sum(1 for v in lengths if v > budget_chars)
+    return over / len(lengths), max(lengths)
+
+
 def _truncate(path: Path, n: int) -> None:
     lines = path.read_text(encoding="utf-8").splitlines()[:n]
     path.write_text("\n".join(lines) + "\n", encoding="utf-8")
@@ -219,7 +257,7 @@ def main(argv: Optional[list[str]] = None) -> int:
     p.add_argument("--epochs", type=int, default=3)
     p.add_argument("--aug-factor", type=int, default=8)
     p.add_argument("--max-tasks", type=int, default=None, help="truncate the dataset for a smoke run")
-    p.add_argument("--max-seq-length", type=int, default=2048)
+    p.add_argument("--max-seq-length", type=int, default=DEFAULT_MAX_SEQ_LENGTH)
     p.add_argument("--lora-r", type=int, default=16)
     p.add_argument("--lora-alpha", type=int, default=32)
     p.add_argument("--learning-rate", type=float, default=2e-4)
@@ -260,7 +298,24 @@ def main(argv: Optional[list[str]] = None) -> int:
         data_dir, REPO / "data" / "processed", args.aug_factor, args.max_tasks
     )
 
-    log("train", f"{model_name} -> {out_dir}")
+    rate, longest = truncation_rate(train_file, args.max_seq_length)
+    log(
+        "dataset",
+        f"longest example ~{int(longest / CHARS_PER_TOKEN)} tokens; "
+        f"{rate:.1%} exceed max_seq_length={args.max_seq_length}",
+    )
+    if rate > 0.05:
+        log(
+            "dataset",
+            f"WARNING: {rate:.1%} of examples will be cut mid-grid, training the "
+            f"model to stop early. Raise --max-seq-length (8192 fits everything) "
+            f"or accept the loss deliberately.",
+        )
+
+    # Long sequences are activation-bound; trading compute for memory is what
+    # makes these lengths fit on a single consumer GPU at all.
+    use_checkpointing = args.max_seq_length >= 4096
+    log("train", f"{model_name} -> {out_dir} (gradient_checkpointing={use_checkpointing})")
     from src.train import train
 
     train(
@@ -276,6 +331,7 @@ def main(argv: Optional[list[str]] = None) -> int:
         gradient_accumulation_steps=grad_accum,
         learning_rate=args.learning_rate,
         seed=args.seed,
+        gradient_checkpointing=use_checkpointing,
     )
 
     mins = (time.perf_counter() - started) / 60

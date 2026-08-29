@@ -112,6 +112,7 @@ def build_sft_config_kwargs(
     use_fp16: bool,
     use_bf16: bool,
     seed: int,
+    gradient_checkpointing: bool = False,
 ) -> dict[str, Any]:
     kw: dict[str, Any] = {
         "output_dir": output_dir,
@@ -128,7 +129,7 @@ def build_sft_config_kwargs(
         "fp16": use_fp16,
         "bf16": use_bf16,
         "optim": "adamw_torch",
-        "gradient_checkpointing": False,
+        "gradient_checkpointing": gradient_checkpointing,
         "weight_decay": 0.01,
         "seed": seed,
         "report_to": "none",
