@@ -1,22 +1,76 @@
-# ARC-AGI-2 Fine-Tuning & Evaluation Suite
+# ARC-AGI-2 Solver & Kaggle Submission Suite
 
-A modular, end-to-end framework for fine-tuning Large Language Models (LLMs) on ARC-AGI & ARC-AGI-2 (Abstraction and Reasoning Corpus) tasks using LoRA/QLoRA and Hugging Face TRL.
+An offline symbolic solver for ARC-AGI, a Kaggle submission runner built to
+survive the competition environment, and an LLM fine-tuning stack for the work
+that the symbolic layer cannot reach.
 
----
+## Kaggle in one command
 
-## Project Structure
+```bash
+python -m src.kaggle_run          # finds the data, writes submission.json
+```
+
+Full notebook instructions, including the no-upload bundle route, are in
+[`kaggle/README.md`](kaggle/README.md). The runner is CPU-only, needs no
+network, and holds its wall-clock deadline.
+
+## Where this actually stands
+
+Measured on the real benchmarks, `--per-task-seconds 30`, 4 CPU workers, pass@2:
+
+| Benchmark | DSL search alone | Solver bank + search |
+|---|---|---|
+| ARC-AGI-1 training (400) | — | ~17% |
+| ARC-AGI-1 evaluation (400) | — | ~10% |
+| ARC-AGI-2 training (1000) | 2.5% | ~10% |
+| **ARC-AGI-2 evaluation (120)** | **0%** | **~0%** |
+
+Read the last row first: **ARC Prize scores against the ARC-AGI-2 private
+evaluation set**, which resembles that public eval split, not the training
+split. The symbolic layer contributes essentially nothing there, and that is
+not a budget problem — ARC-AGI-2 was explicitly designed so that
+single-transformation program search fails on it.
+
+For calibration: the strongest purely symbolic ARC result ever recorded is
+roughly 40% on ARC-AGI-**1** (icecuber, 2020), from a large hand-tuned C++ DSL.
+Every approach that has scored meaningfully on ARC-AGI-2 pairs a neural model
+with test-time training. So the symbolic bank here is a cheap, exact,
+always-correct-when-it-fires floor — not the thing that produces a score. The
+LLM path (`src/train.py`, `src/test_time_train.py`, `scripts/train_bond_*.py`)
+is where the score comes from.
+
+## Project structure
 
 ```
 arc-agi-2-project/
 ├── src/
-│   ├── __init__.py
-│   ├── data.py          # Grid serialization, D8 symmetries, color bijections, task augmentations
-│   ├── build_dataset.py # Builds arc_train.jsonl / arc_val.jsonl with augmentations (CPU, local)
-│   ├── train.py         # 4-bit QLoRA SFTTrainer training loop (GPU, Colab & local)
-│   └── evaluate.py      # ARC benchmark exact-match scoring (2-attempt Pass@2 metric)
-├── requirements.txt     # Dependencies (torch, transformers, peft, trl, bitsandbytes, datasets)
-└── README.md            # Quickstart guide and documentation
+│   ├── kaggle_run.py      # Kaggle runner: discovery, deadline, workers, schema validation
+│   ├── arc_solve.py       # One task in, two attempts out. Never raises.
+│   ├── hrps/
+│   │   ├── solvers.py     # Exact train-verified solver bank (the symbolic floor)
+│   │   ├── search.py      # Instrumented finite-DSL best-first search
+│   │   └── ...            # Grids, objects, residuals, Bond/HRPS reasoning stack
+│   ├── train.py           # QLoRA SFT training loop (GPU)
+│   ├── test_time_train.py # Per-task test-time training
+│   └── evaluate.py        # Pass@2 exact-match scoring
+├── kaggle/                # Notebook, bundle, and Kaggle-specific docs
+└── scripts/               # Bundle builder, GPU preflight, Bond training runners
 ```
+
+## The solver bank
+
+`src/hrps/solvers.py` enumerates hypotheses from a fixed set of families and
+keeps only those that reproduce **every** demonstration pair exactly. A rule
+that cannot replay the training pairs never predicts, so the bank's answers are
+verified rather than guessed; when nothing verifies, it abstains and the
+fallback layer supplies a well-formed grid.
+
+Families: D8 transforms with learned colour maps, mosaic tiling, fractal
+self-tiling, uniform and content-derived scaling, cellwise functions over
+separator-split panels, panel selection, symmetry repair and occlusion fill,
+object selection/recolouring/filtering, colour remapping by frequency rank,
+row-column deduplication, borders, denoising, constant outputs, and a
+last-resort local neighbourhood lookup.
 
 ---
 
