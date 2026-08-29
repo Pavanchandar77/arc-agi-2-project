@@ -264,7 +264,7 @@ def run_evaluation(
                 )
             # Direct Inference (No TTT)
             model.eval()
-            if hasattr(tokenizer, "apply_chat_template"):
+            if getattr(tokenizer, "chat_template", None):
                 input_prompt = tokenizer.apply_chat_template(
                     [m for m in messages if m.get("role") != "assistant"],
                     tokenize=False,

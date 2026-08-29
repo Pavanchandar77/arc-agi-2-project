@@ -1,6 +1,6 @@
 """Bond SFT native-precision LoRA entry point.
 
-First real experiment: Qwen/Qwen3.5-4B on a remote NVIDIA GPU.
+First real experiment: Qwen/Qwen3-4B on a remote NVIDIA GPU.
 0.5B/1.5B = laptop smoke only. 27B = later ceiling, not this run.
 
 SFT first. Never overwrite the foundation. Never label 0.5B/1.5B as 4B Bond.
@@ -22,9 +22,9 @@ from src.hrps.identity import PUBLIC_NAME
 
 def main(argv: Optional[list[str]] = None) -> int:
     p = argparse.ArgumentParser(description="Bond SFT adapter training")
-    p.add_argument("--foundation", type=str, default="Qwen/Qwen3.5-4B")
+    p.add_argument("--foundation", type=str, default="Qwen/Qwen3-4B")
     p.add_argument("--episodes", type=str, default=str(BOND_DIR / "train_scale" / "sft_actions.jsonl"))
-    p.add_argument("--output-dir", type=str, default=str(REPO_ROOT / "models" / "bond_qwen35_4b"))
+    p.add_argument("--output-dir", type=str, default=str(REPO_ROOT / "models" / "bond_qwen3_4b"))
     p.add_argument("--method", choices=("sft", "lora", "qlora"), default="lora")
     p.add_argument("--seed", type=int, default=42)
     p.add_argument("--epochs", type=int, default=3)

@@ -121,9 +121,11 @@ ALIASES = {
     "qwen1.5b": "qwen1.5b_smoke",
     SMOKE_FOUNDATION.lower(): "qwen1.5b_smoke",
     "qwen3.5-4b": "qwen3.5_4b",
+    "qwen3-4b": "qwen3.5_4b",
     "qwen3.5_4b": "qwen3.5_4b",
     SMALL_EXPERIMENT_FOUNDATION.lower(): "qwen3.5_4b",
     "qwen3.8-27b": "qwen38_27b",
+    "qwen3-14b": "qwen38_27b",
     "qwen38_27b": "qwen38_27b",
     "qwen3.8_27b": "qwen38_27b",
     PRIMARY_FOUNDATION.lower(): "qwen38_27b",
@@ -271,7 +273,7 @@ def hardware_gate(spec: dict[str, Any]) -> Optional[str]:
             f"This host: {ram}, {avail}, {gpu}, {torch_s}, cuda={hw['cuda']}. "
             f"Do not silently switch the foundation. On this laptop use "
             f"--foundation qwen05b_cpu or qwen1.5b_smoke after closing Discord/Chrome. "
-            f"Qwen3.8-27B adapter training stays a remote NVIDIA job; do not download it here."
+            f"Qwen3-14B adapter training stays a remote NVIDIA job; do not download it here."
         )
     if spec.get("refuse_local_download") and not hw["cuda"]:
         return (
@@ -292,7 +294,7 @@ def free_ram_gate(spec: dict[str, Any]) -> Optional[str]:
             f"hardware_blocked: {spec['hf_id']} wants >={min_avail}GB free RAM "
             f"(this host has {hw['avail_gb']:.1f}GB free of {hw['ram_gb']}GB). "
             f"Quit Discord (~4GB) and Chrome (~3GB), then retry. "
-            f"This is still a CPU Bond-smoke run, not Qwen3.5-4B."
+            f"This is still a CPU Bond-smoke run, not Qwen3-4B."
         )
     return None
 

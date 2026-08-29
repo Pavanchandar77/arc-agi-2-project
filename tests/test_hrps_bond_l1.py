@@ -171,7 +171,7 @@ def test_guided_search_language_id():
     assert g.joint_demo_exact is True
     man = language_manifest()
     assert man["max_depth"] == LANGUAGE_DEPTH
-    assert man["foundation_hf_id"] == "Qwen/Qwen3.5-4B"
+    assert man["foundation_hf_id"] == "Qwen/Qwen3-4B"
     assert man["phase1_untouched"]["depth"] == 3
 
 

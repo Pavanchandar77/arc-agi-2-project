@@ -1,7 +1,7 @@
 """Bond-4B native-precision LoRA training (Transformers 5 / current TRL).
 
-Foundation for the Bond experiment is Qwen/Qwen3.5-4B when launched via
-scripts/train_bond_qwen35_4b.py or scripts/train_bond_lightning.py.
+Foundation for the Bond experiment is Qwen/Qwen3-4B when launched via
+scripts/train_bond_qwen3_4b.py or scripts/train_bond_lightning.py.
 This module does not swap that id.
 
 Architecture:
@@ -123,8 +123,8 @@ def construct_sft_trainer(
 def train(
     train_file: str = "data/processed/arc_train.jsonl",
     val_file: Optional[str] = "data/processed/arc_val.jsonl",
-    model_name: str = "Qwen/Qwen3.5-4B",
-    output_dir: str = "models/bond_qwen35_4b",
+    model_name: str = "Qwen/Qwen3-4B",
+    output_dir: str = "models/bond_qwen3_4b",
     max_seq_length: int = 2048,
     lora_r: int = 16,
     lora_alpha: int = 32,
@@ -274,12 +274,12 @@ def train(
 
 def main():
     parser = argparse.ArgumentParser(
-        description="Native-precision LoRA SFT. Bond-4B launcher pins Qwen/Qwen3.5-4B."
+        description="Native-precision LoRA SFT. Bond-4B launcher pins Qwen/Qwen3-4B."
     )
     parser.add_argument("--train-file", type=str, default="artifacts/bond/train_scale/sft_actions.jsonl")
     parser.add_argument("--val-file", type=str, default="")
-    parser.add_argument("--model-name", type=str, default="Qwen/Qwen3.5-4B")
-    parser.add_argument("--output-dir", type=str, default="models/bond_qwen35_4b")
+    parser.add_argument("--model-name", type=str, default="Qwen/Qwen3-4B")
+    parser.add_argument("--output-dir", type=str, default="models/bond_qwen3_4b")
     parser.add_argument("--epochs", type=int, default=3)
     parser.add_argument("--batch-size", type=int, default=2)
     parser.add_argument("--grad-accum", type=int, default=4)

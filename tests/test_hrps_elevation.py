@@ -265,7 +265,11 @@ def test_open_model_loader_reports_no_torch():
 
     model, status = try_load_open_model()
     assert model is None
-    assert status in {"no_torch", "no_transformers"} or status.startswith("load_failed")
+    # Whether torch is installed or not, the loader reports rather than raises.
+    # With torch present and no checkpoint on disk the status is the offline one.
+    assert status in {"no_torch", "no_transformers"} or status.startswith(
+        ("load_failed", "offline_weights_missing")
+    )
 
 
 @pytest.mark.skipif(not H_JSON.exists(), reason="H library artifact missing")

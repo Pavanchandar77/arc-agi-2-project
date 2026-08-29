@@ -344,7 +344,7 @@ def test_check_gpu_env_script_exists():
     path = REPO / "scripts" / "check_gpu_env.py"
     assert path.is_file()
     text = path.read_text(encoding="utf-8")
-    assert "Qwen/Qwen3.5-4B" in text
+    assert "Qwen/Qwen3-4B" in text
     assert "qwen3_5" in text
     assert "torchrun DDP" in text or "not torchrun" in text
     assert "--no-download" in text
@@ -356,8 +356,8 @@ def test_qwen35_4b_registry_is_exact():
     from src.hrps.bond import SYSTEMS
 
     spec = resolve_foundation("qwen3.5_4b")
-    assert spec["hf_id"] == "Qwen/Qwen3.5-4B"
-    assert resolve_foundation("Qwen/Qwen3.5-4B")["hf_id"] == "Qwen/Qwen3.5-4B"
+    assert spec["hf_id"] == "Qwen/Qwen3-4B"
+    assert resolve_foundation("Qwen/Qwen3-4B")["hf_id"] == "Qwen/Qwen3-4B"
     assert set(SYSTEMS) == {"base_direct", "base_hrps", "bond_direct", "bond_hrps"}
 
 
@@ -434,6 +434,6 @@ def test_train_py_has_no_obsolete_trainer_keywords():
 def test_lightning_script_has_regenerate_flag():
     text = (REPO / "scripts" / "train_bond_lightning.py").read_text(encoding="utf-8")
     assert "--regenerate" in text
-    assert "Qwen/Qwen3.5-4B" in text
+    assert "Qwen/Qwen3-4B" in text
     assert "not repeatedly" in text or "already exists" in text or "reused" in text
     assert "Not AGI" in text

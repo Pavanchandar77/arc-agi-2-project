@@ -14,18 +14,24 @@ import os
 from dataclasses import dataclass, field
 from typing import Callable, Optional, Protocol
 
-PREFERRED_INKLING = "thinkingmachines/Inkling-Small"
+# Foundation checkpoints. Every id here must resolve on the Hub; run
+# `python scripts/check_foundations.py` from a machine with network access
+# before booking GPU time. An earlier revision pinned ids that are not release
+# names ("Qwen/Qwen3.5-4B", "Qwen/Qwen3.8-27B", "deepseek-ai/DeepSeek-V4-Flash"),
+# so training could never have started. Override with HRPS_MODEL /
+# HRPS_OPEN_MODEL rather than editing this list.
+PREFERRED_INKLING = os.environ.get("HRPS_INKLING_ID", "thinkingmachines/Inkling-Small")
 LOCAL_DEFAULT = "Qwen/Qwen2.5-1.5B-Instruct"
 SMOKE_FOUNDATION = "Qwen/Qwen2.5-1.5B-Instruct"
 CPU_FOUNDATION = "Qwen/Qwen2.5-0.5B-Instruct"
-SMALL_EXPERIMENT_FOUNDATION = "Qwen/Qwen3.5-4B"
-PRIMARY_FOUNDATION = "Qwen/Qwen3.8-27B"
-DEEPSEEK_FOUNDATION = "deepseek-ai/DeepSeek-V4-Flash"
-SMOKE_LABEL = "Bond-Qwen1.5B-smoke"
-CPU_LABEL = "Bond-Qwen0.5B-cpu"
-SMALL_LABEL = "Bond-Qwen3.5-4B"
-PRIMARY_LABEL = "Bond-Qwen38-27B"
-DEEPSEEK_LABEL = "Bond-DeepSeek-V4-Flash"
+SMALL_EXPERIMENT_FOUNDATION = "Qwen/Qwen3-4B"
+PRIMARY_FOUNDATION = "Qwen/Qwen3-14B"
+DEEPSEEK_FOUNDATION = "deepseek-ai/DeepSeek-R1-Distill-Qwen-14B"
+SMOKE_LABEL = "Bond-Qwen2.5-1.5B-smoke"
+CPU_LABEL = "Bond-Qwen2.5-0.5B-cpu"
+SMALL_LABEL = "Bond-Qwen3-4B"
+PRIMARY_LABEL = "Bond-Qwen3-14B"
+DEEPSEEK_LABEL = "Bond-DeepSeek-R1-Distill-14B"
 
 
 def resolve_model_name(explicit: Optional[str] = None) -> str:

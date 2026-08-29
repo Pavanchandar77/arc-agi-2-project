@@ -1,4 +1,4 @@
-"""Laptop Bond LoRA: CPU only, small Qwen, not Qwen3.5-4B.
+"""Laptop Bond LoRA: CPU only, small Qwen, not Qwen3-4B.
 
 Close Discord (~4GB) and Chrome (~3GB) first. Needs ~3GB+ free RAM
 and a few GB disk for torch + the 0.5B weights.

@@ -99,17 +99,17 @@ def test_run_system_uses_overseer():
 
 
 def test_first_real_bond_experiment_is_4b():
-    spec = resolve_foundation("Qwen/Qwen3.5-4B")
+    spec = resolve_foundation("Qwen/Qwen3-4B")
     assert spec["id"] == "qwen3.5_4b"
     assert spec.get("first_real_bond_experiment") is True
-    twenty7 = resolve_foundation("Qwen/Qwen3.8-27B")
+    twenty7 = resolve_foundation("Qwen/Qwen3-14B")
     assert twenty7.get("first_real_bond_experiment") is not True
 
 
 def test_qwen38_27b_not_downloaded_locally():
-    spec = resolve_foundation("Qwen/Qwen3.8-27B")
+    spec = resolve_foundation("Qwen/Qwen3-14B")
     assert spec["id"] == "qwen38_27b"
-    assert spec["hf_id"] == "Qwen/Qwen3.8-27B"
+    assert spec["hf_id"] == "Qwen/Qwen3-14B"
     assert spec["refuse_local_download"] is True
     blocked = hardware_gate(spec)
     assert blocked is not None

@@ -237,7 +237,8 @@ def adapt_model_to_task(
     # Tokenize records
     formatted_prompts = []
     for rec in ttt_records:
-        if hasattr(tokenizer, "apply_chat_template"):
+        # Every fast tokenizer has the method; only some carry a template.
+        if getattr(tokenizer, "chat_template", None):
             text = tokenizer.apply_chat_template(rec["messages"], tokenize=False, add_generation_prompt=False)
         else:
             text = f"{rec['prompt']}\n{rec['completion']}{tokenizer.eos_token}"
@@ -336,7 +337,7 @@ def predict_task_with_ttt(
             include_test_output=False
         )
 
-        if hasattr(tokenizer, "apply_chat_template"):
+        if getattr(tokenizer, "chat_template", None):
             input_prompt = tokenizer.apply_chat_template(
                 messages,
                 tokenize=False,

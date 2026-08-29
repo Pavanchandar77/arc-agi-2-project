@@ -8,8 +8,9 @@ data/processed/
 data/raw/
 *.jsonl
 
-# Sub-repositories
-ARC-AGI-2/
+# Sub-repositories (may be a checkout or a symlink to one)
+ARC-AGI-2
+ARC-AGI/
 unsloth/
 
 # Trained Models & Checkpoints

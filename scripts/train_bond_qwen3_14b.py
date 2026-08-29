@@ -1,4 +1,4 @@
-"""Remote Stage-1 Bond SFT on Qwen3.8-27B. Do not run on the laptop."""
+"""Remote Stage-1 Bond SFT on Qwen3-14B. Do not run on the laptop."""
 
 from __future__ import annotations
 
@@ -16,11 +16,11 @@ if __name__ == "__main__":
         train_main(
             [
                 "--foundation",
-                "Qwen/Qwen3.8-27B",
+                "Qwen/Qwen3-14B",
                 "--episodes",
                 str(REPO / "artifacts" / "bond" / "train_scale" / "sft_actions.jsonl"),
                 "--output-dir",
-                str(REPO / "models" / "bond_qwen38_27b"),
+                str(REPO / "models" / "bond_qwen3_14b"),
                 "--method",
                 "qlora",
                 "--seed",
