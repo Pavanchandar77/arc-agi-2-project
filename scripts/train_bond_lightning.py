@@ -1,4 +1,4 @@
-"""Lightning / Kaggle Bond-4B trainer. Native-precision LoRA on Qwen/Qwen3.5-4B.
+"""Lightning / Kaggle Bond-4B trainer. Native-precision LoRA on Qwen/Qwen3-4B.
 
 Does not regenerate Bond-L1 curriculum when a holdout-clean artifact already
 exists. Pass --regenerate to rebuild. Does not swap the foundation.
@@ -36,7 +36,7 @@ PINNED = {
     "language": LANGUAGE_ID,
     "foundation": "qwen3.5_4b",
     "hf_id": FOUNDATION_HF_ID,
-    "adapter": str(REPO / "models" / "bond_qwen35_4b"),
+    "adapter": str(REPO / "models" / "bond_qwen3_4b"),
     "train_scale": str(TRAIN_SCALE_SFT),
     "merged_sft": str(MERGED_SFT),
     "seed": 42,
@@ -102,7 +102,7 @@ def main(argv: list[str] | None = None) -> int:
     args = p.parse_args(argv)
 
     spec = resolve_foundation(PINNED["foundation"])
-    if spec["hf_id"] != PINNED["hf_id"] or spec["hf_id"] != "Qwen/Qwen3.5-4B":
+    if spec["hf_id"] != PINNED["hf_id"] or spec["hf_id"] != "Qwen/Qwen3-4B":
         print(json.dumps({"status": "blocked", "reason": "foundation_id_mismatch", "pinned": PINNED["hf_id"], "resolved": spec["hf_id"]}))
         return 2
     prep = prepare_sft(regenerate=args.regenerate)

@@ -2,7 +2,7 @@
 
 Run this on an NVIDIA GPU machine (24–48 GB VRAM practical).
 This file must not be used to train Qwen2.5-1.5B and still write
-models/bond_qwen35_4b.
+models/bond_qwen3_4b.
 """
 
 from __future__ import annotations
@@ -19,8 +19,8 @@ from src.hrps.bond import train_bond_adapter
 
 PINNED = {
     "foundation": "qwen3.5_4b",
-    "hf_id": "Qwen/Qwen3.5-4B",
-    "adapter": str(REPO / "models" / "bond_qwen35_4b"),
+    "hf_id": "Qwen/Qwen3-4B",
+    "adapter": str(REPO / "models" / "bond_qwen3_4b"),
     "episodes": str(REPO / "artifacts" / "bond" / "train_scale" / "sft_actions.jsonl"),
     "seed": 42,
     "lora_r": 16,

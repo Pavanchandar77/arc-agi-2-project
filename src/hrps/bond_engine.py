@@ -1,7 +1,7 @@
 """Bond-4B runtime: exact search + verifier + optional model loop.
 
 Public identity is Bond. The only foundation for this system is
-Qwen/Qwen3.5-4B. Direct answering never sees HRPS. HRPS arms run
+Qwen/Qwen3-4B. Direct answering never sees HRPS. HRPS arms run
 Bond-L1 guided search, then optionally the active overseer, then
 commit the best jointly exact unconstrained programs (at most two).
 

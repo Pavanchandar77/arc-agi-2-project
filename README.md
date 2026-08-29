@@ -16,14 +16,18 @@ network, and holds its wall-clock deadline.
 
 ## Where this actually stands
 
-Measured on the real benchmarks, `--per-task-seconds 30`, 4 CPU workers, pass@2:
+Measured on the real benchmarks, pass@2, 4 CPU workers:
 
 | Benchmark | DSL search alone | Solver bank + search |
 |---|---|---|
-| ARC-AGI-1 training (400) | — | ~17% |
-| ARC-AGI-1 evaluation (400) | — | ~10% |
-| ARC-AGI-2 training (1000) | 2.5% | ~10% |
-| **ARC-AGI-2 evaluation (120)** | **0%** | **~0%** |
+| ARC-AGI-1 training (400) | — | 17.0% |
+| ARC-AGI-1 evaluation (400) | — | 9.5% |
+| ARC-AGI-2 training (1000) | 2.5% | 10.1% |
+| **ARC-AGI-2 evaluation (120)** | **0.0%** | **0.0%** |
+
+The last row is not a budget artefact. At 30s per task, all 120 evaluation
+tasks fall through to the fallback layer: no rule in the bank and no program in
+the search reproduces even the demonstrations, let alone the test.
 
 Read the last row first: **ARC Prize scores against the ARC-AGI-2 private
 evaluation set**, which resembles that public eval split, not the training

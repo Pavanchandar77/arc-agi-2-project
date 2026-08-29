@@ -1,7 +1,7 @@
 """ARC Prize submission notebook — paste these cells into a Kaggle notebook.
 
-Each `# %% [cell]` marker starts a new notebook cell. The whole thing runs
-offline on CPU: no internet, no accelerator, no pip install.
+Each cell marker below starts a new notebook cell. The whole thing runs offline
+on CPU: no internet, no accelerator, no pip install.
 
 Two ways to get the solver into the notebook:
 

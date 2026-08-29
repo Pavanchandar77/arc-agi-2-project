@@ -153,7 +153,7 @@ def write_remote_train_bundle(
     recorded = {
         "public_name": PUBLIC_NAME,
         "internal_artifact": "Bond-Qwen35-4B-adapter",
-        "foundation_hf_id": "Qwen/Qwen3.5-4B",
+        "foundation_hf_id": "Qwen/Qwen3-4B",
         "command": command,
         "holdout_spec": "training[400:440]",
         "holdout_ids": holdout_ids,
@@ -171,7 +171,7 @@ def write_remote_train_bundle(
         "Internal artifact: Bond-Qwen35-4B-adapter\n"
         "Foundation stays on disk; merge writes a new directory.\n\n"
         "python -m src.hrps.bond train --foundation qwen3.5_4b "
-        "--adapter models/bond_qwen35_4b --seed 42 --lora-r 16 --lora-alpha 32 "
+        "--adapter models/bond_qwen3_4b --seed 42 --lora-r 16 --lora-alpha 32 "
         "--lora-dropout 0.05 --epochs 3 --learning-rate 2e-4 --max-seq-length 2048 "
         "--holdout-spec training[400:440]\n",
         encoding="utf-8",

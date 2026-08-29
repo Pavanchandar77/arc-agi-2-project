@@ -54,7 +54,7 @@ def test_bond_refuses_missing_adapter(tmp_path: Path):
         inner,
         adapter_path=tmp_path / "missing",
         foundation_id="qwen3.5_4b",
-        foundation_hf_id="Qwen/Qwen3.5-4B",
+        foundation_hf_id="Qwen/Qwen3-4B",
     )
     assert model is None
     assert status == ADAPTER_MISSING
@@ -65,7 +65,7 @@ def test_bond_refuses_missing_adapter(tmp_path: Path):
 
 def test_foundation_handle_is_not_named_bond():
     inner = ScriptedModel(responses=["ok"])
-    f = wrap_foundation(inner, foundation_id="qwen3.5_4b", foundation_hf_id="Qwen/Qwen3.5-4B")
+    f = wrap_foundation(inner, foundation_id="qwen3.5_4b", foundation_hf_id="Qwen/Qwen3-4B")
     assert f.is_bond is False
     assert f.name != PUBLIC_NAME
     assert "Qwen" not in f.name
@@ -91,6 +91,11 @@ def test_merge_refuses_to_overwrite_foundation(tmp_path: Path):
     assert (foundation / "weights.bin").read_text(encoding="utf-8") == "base"
 
 
+@pytest.mark.skipif(
+    __import__("importlib").util.find_spec("transformers") is not None,
+    reason="covers the fallback taken when transformers is absent; with it "
+    "installed the real merge path runs and rejects these placeholder files",
+)
 def test_merge_without_torch_copies_adapter_to_new_dir(tmp_path: Path):
     foundation = tmp_path / "foundation"
     foundation.mkdir()

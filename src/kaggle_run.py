@@ -354,6 +354,9 @@ def run(config: RunConfig) -> dict[str, Any]:
         "schema_problems": problems,
         "sources": _count(metas, "source"),
         "n_verified": sum(1 for m in metas if m.get("verified")),
+        # Tasks whose answer replayed every demonstration exactly. A later LLM
+        # phase must not overwrite these with sampled output.
+        "verified_ids": sorted(str(m["task_id"]) for m in metas if m.get("verified")),
     }
     if config.solutions is not None and config.solutions.is_file():
         report["score"] = score_submission(submission, config.solutions)

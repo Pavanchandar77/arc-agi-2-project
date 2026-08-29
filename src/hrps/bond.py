@@ -8,7 +8,7 @@
   = Bond-Qwen
 
 The 1.5B local run is Bond-Qwen1.5B-smoke, not final Bond.
-Qwen3.5-4B is the first serious foundation (remote GPU).
+Qwen3-4B is the first serious foundation (remote GPU).
 Inkling-Small is a configurable future backend and is not required locally.
 
 Never label a wrapper as a trained model. Never silently swap checkpoints.
@@ -241,7 +241,7 @@ def train_bond_adapter(
                 "code_revision": code_revision(),
                 "note": (
                     "Not a learned Bond checkpoint unless adapter_weights_present is true "
-                    "and the adapter reloads on Qwen/Qwen3.5-4B."
+                    "and the adapter reloads on Qwen/Qwen3-4B."
                     if spec["id"] == "qwen3.5_4b"
                     else "Not a learned Bond checkpoint unless adapter weights were saved and reloaded."
                 ),
@@ -576,7 +576,7 @@ def main(argv: Optional[list[str]] = None) -> int:
             holdout_ids=held,
             command={
                 "foundation": "qwen3.5_4b",
-                "adapter": "models/bond_qwen35_4b",
+                "adapter": "models/bond_qwen3_4b",
                 "seed": args.seed,
                 "lora_r": args.lora_r,
                 "lora_alpha": args.lora_alpha,

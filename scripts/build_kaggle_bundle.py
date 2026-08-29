@@ -65,6 +65,11 @@ def import_closure() -> list[str]:
     sys.path.insert(0, str(REPO_ROOT))
     from src.hrps.task import parse_task  # noqa: F401
     import src.kaggle_run  # noqa: F401
+
+    # The LLM path too, so one bundle serves both notebooks. These modules
+    # import torch lazily inside functions, so they cost nothing offline.
+    import src.kaggle_llm_run  # noqa: F401
+    import src.test_time_train  # noqa: F401
     from src.arc_solve import solve_task
 
     # Exercise the lazy paths (search stage L pulls in abstractions/language).

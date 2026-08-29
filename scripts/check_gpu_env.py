@@ -1,6 +1,6 @@
 """Preflight for Bond-4B native-precision LoRA on a GPU host (Kaggle / Lightning).
 
-Fails clearly. Never swaps Qwen/Qwen3.5-4B. Never claims a learned Bond
+Fails clearly. Never swaps Qwen/Qwen3-4B. Never claims a learned Bond
 checkpoint. device_map='auto' is model-parallel shard placement, not DDP.
 
 Usage:
@@ -20,7 +20,7 @@ from pathlib import Path
 REPO = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(REPO))
 
-FOUNDATION = "Qwen/Qwen3.5-4B"
+FOUNDATION = "Qwen/Qwen3-4B"
 EXPECTED_MODEL_TYPE = "qwen3_5"
 SFT_PATH = REPO / "artifacts" / "bond" / "train_scale" / "sft_actions.jsonl"
 ARC_TRAIN = REPO / "ARC-AGI-2" / "data" / "training"
@@ -40,7 +40,7 @@ def main(argv: list[str] | None = None) -> int:
     p.add_argument(
         "--no-download",
         action="store_true",
-        help="Load Qwen/Qwen3.5-4B config from local cache only.",
+        help="Load Qwen/Qwen3-4B config from local cache only.",
     )
     args = p.parse_args(argv)
 
@@ -126,7 +126,7 @@ def main(argv: list[str] | None = None) -> int:
                 "Do not switch the foundation."
             )
     except Exception as exc:
-        hint = "Do not substitute another model. Keep Qwen/Qwen3.5-4B."
+        hint = "Do not substitute another model. Keep Qwen/Qwen3-4B."
         if args.no_download:
             hint = "Config not in local cache. Re-run without --no-download (Kaggle default allows download)."
         errors.append(f"failed to load {FOUNDATION} config: {exc}. {hint}")
@@ -136,7 +136,7 @@ def main(argv: list[str] | None = None) -> int:
     rec["is_final_bond"] = False
     rec["note"] = (
         "Preflight only. Adapter weights are not a learned Bond checkpoint until "
-        "they are saved under models/bond_qwen35_4b and reloaded."
+        "they are saved under models/bond_qwen3_4b and reloaded."
     )
     print(json.dumps(rec, indent=2))
     return 0 if rec["ok"] else 2

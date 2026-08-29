@@ -70,6 +70,23 @@ python -m src.kaggle_run \
 Useful flags: `--no-search` (solver bank only, seconds instead of minutes),
 `--limit N` (first N tasks), `--workers 1` (serial, for debugging tracebacks).
 
+## When you add the LLM
+
+The offline solver is the floor, not the score. Two constraints shape how the
+neural path has to be built here, and both are easy to discover too late:
+
+* **Weights must arrive as a Kaggle Dataset.** Internet is off, so
+  `from_pretrained("org/model")` cannot download anything. Upload the
+  checkpoint as a Dataset and load it from `/kaggle/input/<slug>/`.
+* **Test-time training has to fit the same wall clock.** Per-task adaptation
+  plus generation, times the number of tasks, has to land inside the limit with
+  room to spare. Budget it the way `kaggle_run` budgets the symbolic path:
+  a global deadline, a per-task cap, and a fallback whenever a task overruns.
+
+Keep the solver bank in front of the model. It is fast, and when it fires its
+answer is verified against every demonstration rather than sampled, so it
+should win any disagreement.
+
 ## Tuning the budget
 
 `--per-task-seconds` caps any single task; the runner also computes a fair

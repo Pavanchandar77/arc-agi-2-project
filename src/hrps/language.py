@@ -20,7 +20,7 @@ LANGUAGE_DEPTH = 4
 LANGUAGE_OPS_PER_NODE = 80
 PHASE1_DEPTH = 3
 PHASE1_OPS_PER_NODE = 36
-FOUNDATION_HF_ID = "Qwen/Qwen3.5-4B"
+FOUNDATION_HF_ID = "Qwen/Qwen3-4B"
 
 
 def bond_l1_budget(*, nodes: int = 2000, seconds: float = 8.0, frontier: int = 12000) -> SearchBudget:
@@ -53,6 +53,6 @@ def language_manifest() -> dict[str, Any]:
         "note": (
             "Bond-L1 does not edit frozen Phase-1 conclusions. "
             "Remeasure language-vs-search with stage L before claiming a new ceiling. "
-            "Qwen/Qwen3.5-4B is the only Bond foundation for this system."
+            "Qwen/Qwen3-4B is the only Bond foundation for this system."
         ),
     }
