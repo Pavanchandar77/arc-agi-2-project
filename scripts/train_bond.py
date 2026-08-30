@@ -126,6 +126,47 @@ def missing_packages() -> list[str]:
     return [p for p in REQUIRED if not _has_module(p)]
 
 
+# PEFT refuses to inject LoRA when torchao is installed below this version. It
+# reads the distribution metadata, so stubbing sys.modules cannot satisfy it -
+# the package has to actually go. Nothing in this pipeline uses torchao: this is
+# native-precision LoRA, not quantization.
+TORCHAO_MIN_FOR_PEFT = (0, 16, 0)
+
+
+def _dist_version(name: str) -> Optional[tuple[int, ...]]:
+    try:
+        import importlib.metadata as md
+
+        raw = md.version(name).split("+")[0].split(".")
+        return tuple(int("".join(c for c in part if c.isdigit()) or 0) for part in raw[:3])
+    except Exception:
+        return None
+
+
+def remove_incompatible_torchao(*, allowed: bool = True) -> str:
+    """Uninstall a torchao too old for PEFT. Returns what was decided."""
+    version = _dist_version("torchao")
+    if version is None:
+        return "absent"
+    if version >= TORCHAO_MIN_FOR_PEFT:
+        return f"kept {'.'.join(map(str, version))}"
+    pretty = ".".join(map(str, version))
+    if not allowed:
+        log("deps", f"WARNING: torchao {pretty} will make PEFT refuse to inject LoRA. "
+                    f"Run: pip uninstall -y torchao")
+        return f"incompatible {pretty}, left alone"
+    log("deps", f"uninstalling torchao {pretty}: PEFT requires >= 0.16 and this "
+                f"pipeline never uses it")
+    run([sys.executable, "-m", "pip", "uninstall", "-y", "-q", "torchao"], check=False)
+    still = _dist_version("torchao")
+    if still is not None and still < TORCHAO_MIN_FOR_PEFT:
+        raise SystemExit(
+            f"torchao {pretty} is still installed and PEFT will refuse to inject "
+            f"LoRA. Remove it manually: pip uninstall -y torchao"
+        )
+    return f"removed {pretty}"
+
+
 def install_dependencies(env: str) -> None:
     missing = missing_packages()
     if not missing:
@@ -312,6 +353,8 @@ def main(argv: Optional[list[str]] = None) -> int:
     p.add_argument("--learning-rate", type=float, default=2e-4)
     p.add_argument("--seed", type=int, default=42)
     p.add_argument("--no-install", action="store_true")
+    p.add_argument("--keep-torchao", action="store_true",
+                   help="warn about an incompatible torchao instead of removing it")
     p.add_argument("--dry-run", action="store_true")
     args = p.parse_args(argv)
 
@@ -321,6 +364,7 @@ def main(argv: Optional[list[str]] = None) -> int:
 
     if not args.no_install:
         install_dependencies(info["environment"])
+        log("deps", f"torchao: {remove_incompatible_torchao(allowed=not args.keep_torchao)}")
         info = detect_environment()  # torch may have appeared
         log("env", json.dumps(info))
 

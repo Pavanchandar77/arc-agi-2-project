@@ -202,3 +202,62 @@ def test_a_plain_machine_is_local(monkeypatch):
     monkeypatch.delenv("KAGGLE_URL_BASE", raising=False)
     monkeypatch.setattr(tb.Path, "is_dir", lambda self: False)
     assert tb.detect_environment()["environment"] == "local"
+
+
+# --------------------------------------------------------------------------
+# torchao: PEFT reads distribution metadata, so the package must actually go
+# --------------------------------------------------------------------------
+
+
+def test_an_absent_torchao_needs_no_action(monkeypatch):
+    import scripts.train_bond as tb
+
+    monkeypatch.setattr(tb, "_dist_version", lambda name: None)
+    assert tb.remove_incompatible_torchao() == "absent"
+
+
+def test_a_new_enough_torchao_is_kept(monkeypatch):
+    import scripts.train_bond as tb
+
+    monkeypatch.setattr(tb, "_dist_version", lambda name: (0, 16, 0))
+    assert tb.remove_incompatible_torchao().startswith("kept")
+
+
+def test_an_old_torchao_is_uninstalled(monkeypatch):
+    import scripts.train_bond as tb
+
+    calls = []
+    versions = iter([(0, 10, 0), None])  # before, then after the uninstall
+    monkeypatch.setattr(tb, "_dist_version", lambda name: next(versions))
+    monkeypatch.setattr(tb, "run", lambda cmd, check=True: calls.append(cmd) or 0)
+    assert tb.remove_incompatible_torchao().startswith("removed")
+    assert any("uninstall" in part for cmd in calls for part in cmd)
+
+
+def test_an_old_torchao_can_be_kept_with_a_warning(monkeypatch):
+    import scripts.train_bond as tb
+
+    monkeypatch.setattr(tb, "_dist_version", lambda name: (0, 10, 0))
+    monkeypatch.setattr(tb, "run", lambda cmd, check=True: pytest.fail("must not uninstall"))
+    assert "left alone" in tb.remove_incompatible_torchao(allowed=False)
+
+
+def test_a_failed_uninstall_stops_the_run_rather_than_training_into_a_crash(monkeypatch):
+    import scripts.train_bond as tb
+
+    monkeypatch.setattr(tb, "_dist_version", lambda name: (0, 10, 0))
+    monkeypatch.setattr(tb, "run", lambda cmd, check=True: 0)
+    with pytest.raises(SystemExit) as excinfo:
+        tb.remove_incompatible_torchao()
+    assert "pip uninstall" in str(excinfo.value)
+
+
+def test_version_parsing_handles_local_and_short_versions(monkeypatch):
+    import importlib.metadata as md
+
+    import scripts.train_bond as tb
+
+    monkeypatch.setattr(md, "version", lambda name: "0.10.0+cu128")
+    assert tb._dist_version("x") == (0, 10, 0)
+    monkeypatch.setattr(md, "version", lambda name: "1.2")
+    assert tb._dist_version("x") == (1, 2)
