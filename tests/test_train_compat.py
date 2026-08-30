@@ -568,3 +568,72 @@ def test_a_compatible_torchao_is_left_alone(monkeypatch):
         md, "version", lambda name: "0.16.0" if name == "torchao" else real_version(name)
     )
     assert neutralize_incompatible_torchao()["action"] == "kept_compatible"
+
+
+# --------------------------------------------------------------------------
+# The repr guard must not refuse a correctly formatted example
+# --------------------------------------------------------------------------
+
+
+def test_a_chat_template_is_not_mistaken_for_a_python_repr():
+    """Regression: the guard flagged anything starting with '<' that lacked
+    'role' in the first 80 chars or 'user' in the first 120. A Qwen template
+    opens '<|im_start|>system' and a long system prompt pushes both words past
+    those windows, so a perfectly good example was refused."""
+    from src.hrps.hf_compat import _looks_like_repr
+
+    qwen = (
+        "<|im_start|>system\nYou solve ARC puzzles by writing a short program "
+        "in a fixed DSL, never by writing the answer grid directly.\n\n"
+        "A program is a pipeline of operators separated by '|'."
+    )
+    assert not _looks_like_repr(qwen)
+
+
+def test_the_plain_fallback_rendering_is_not_a_repr():
+    from src.hrps.hf_compat import _looks_like_repr
+
+    assert not _looks_like_repr("system: You solve ARC puzzles\nuser: here")
+
+
+@pytest.mark.parametrize(
+    "text",
+    [
+        "[{'role': 'system', 'content': 'You solve ARC'}]",
+        '[{"role": "user", "content": "x"}]',
+        "{'role': 'user', 'content': 'x'}",
+        "{'content': 'x'}",
+    ],
+)
+def test_a_stringified_messages_structure_is_caught(text):
+    # This is the real failure: a formatter handing back the object instead of
+    # rendered text, which trains the model on Python syntax.
+    from src.hrps.hf_compat import _looks_like_repr
+
+    assert _looks_like_repr(text)
+
+
+def test_a_bare_grid_is_not_a_repr():
+    from src.hrps.hf_compat import _looks_like_repr
+
+    assert not _looks_like_repr("[[0, 1], [2, 3]]")
+
+
+def test_token_counting_reads_input_ids_not_the_key_count():
+    """Regression: BatchEncoding subclasses UserDict, not dict, so an
+    isinstance(_, dict) test missed it and len() counted its two keys. Every
+    example reported 'tokens=2' and the length warning could never fire."""
+    from src.hrps.hf_compat import preview_formatted_example
+
+    class Encoding(dict):
+        pass
+
+    class Tok:
+        chat_template = None
+        eos_token = "</s>"
+
+        def __call__(self, text, add_special_tokens=False):
+            return Encoding(input_ids=list(range(137)), attention_mask=[1] * 137)
+
+    example = {"messages": [{"role": "user", "content": "hello"}]}
+    assert preview_formatted_example(example, Tok())["n_tokens"] == 137

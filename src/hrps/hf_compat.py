@@ -250,14 +250,34 @@ def make_formatting_func(tokenizer: Any) -> Callable[[dict[str, Any]], Any]:
     return formatting_prompts_func
 
 
+def _looks_like_repr(text: str) -> bool:
+    """True when formatting returned a stringified messages structure.
+
+    The failure this guards against is a formatter handing back
+    ``[{'role': 'system', ...}]`` instead of rendered text, which trains the
+    model on Python syntax. Detect that shape directly rather than by "starts
+    with a bracket and has no 'role' nearby" - a chat template beginning
+    ``<|im_start|>system`` satisfied that and was refused, and a long system
+    prompt pushed the giveaway words past the window it looked in.
+    """
+    stripped = text.lstrip()
+    if not stripped.startswith(("{", "[")):
+        return False
+    head = stripped[:400]
+    return any(key in head for key in ("'role'", '"role"', "'content'", '"content"'))
+
+
 def preview_formatted_example(example: dict[str, Any], tokenizer: Any) -> dict[str, Any]:
     fn = make_formatting_func(tokenizer)
     formatted = fn(example)
     text = formatted[0] if isinstance(formatted, list) else formatted
     n_tokens = None
     try:
-        ids = tokenizer(text, add_special_tokens=False)
-        n_tokens = len(ids["input_ids"]) if isinstance(ids, dict) else len(ids)
+        encoded = tokenizer(text, add_special_tokens=False)
+        # BatchEncoding subclasses UserDict, not dict, so an isinstance(_, dict)
+        # test misses it and len() then counts keys - two - instead of tokens.
+        sequence = encoded["input_ids"] if "input_ids" in encoded else encoded
+        n_tokens = len(sequence)
     except Exception:
         n_tokens = None
     return {
