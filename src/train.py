@@ -174,6 +174,12 @@ def train(
     tokenizer = AutoTokenizer.from_pretrained(model_name, trust_remote_code=True)
     if tokenizer.pad_token is None:
         tokenizer.pad_token = tokenizer.eos_token
+    # Must happen before the trainer is built: TRL applies the chat template
+    # itself while preparing the dataset, and raises if there is none.
+    from src.hrps.hf_compat import ensure_chat_template
+
+    if ensure_chat_template(tokenizer):
+        logger.info("installed fallback chat template for a base checkpoint")
 
     device_available = torch.cuda.is_available()
     load_dtype = (

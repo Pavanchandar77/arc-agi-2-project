@@ -437,3 +437,67 @@ def test_lightning_script_has_regenerate_flag():
     assert "Qwen/Qwen3-4B" in text
     assert "not repeatedly" in text or "already exists" in text or "reused" in text
     assert "Not AGI" in text
+
+
+# --------------------------------------------------------------------------
+# Chat template on base checkpoints
+# --------------------------------------------------------------------------
+
+
+class _BareTokenizer:
+    """A base checkpoint's tokenizer: no chat template at all."""
+
+    chat_template = None
+    eos_token = "</s>"
+
+
+class _InstructTokenizer:
+    chat_template = "{{ 'already here' }}"
+    eos_token = "</s>"
+
+
+def test_a_missing_chat_template_is_installed():
+    from src.hrps.hf_compat import ensure_chat_template
+
+    tok = _BareTokenizer()
+    assert ensure_chat_template(tok) is True
+    assert tok.chat_template
+
+
+def test_an_existing_chat_template_is_left_alone():
+    from src.hrps.hf_compat import ensure_chat_template
+
+    tok = _InstructTokenizer()
+    before = tok.chat_template
+    assert ensure_chat_template(tok) is False
+    assert tok.chat_template == before
+
+
+def test_the_fallback_template_renders_messages_and_a_generation_prompt():
+    # TRL calls apply_chat_template itself while preparing the dataset, so the
+    # template has to actually work, not merely exist.
+    pytest.importorskip("jinja2")
+    from jinja2 import Template
+
+    from src.hrps.hf_compat import FALLBACK_CHAT_TEMPLATE
+
+    tpl = Template(FALLBACK_CHAT_TEMPLATE)
+    msgs = [{"role": "system", "content": "S"}, {"role": "user", "content": "U"}]
+    rendered = tpl.render(messages=msgs, add_generation_prompt=False)
+    assert "system: S" in rendered and "user: U" in rendered
+    assert "assistant:" not in rendered
+
+    with_prompt = tpl.render(messages=msgs, add_generation_prompt=True)
+    assert with_prompt.rstrip().endswith("assistant:")
+
+
+def test_a_tokenizer_that_refuses_assignment_is_survivable():
+    from src.hrps.hf_compat import ensure_chat_template
+
+    class Frozen:
+        chat_template = None
+
+        def __setattr__(self, name, value):
+            raise AttributeError("read only")
+
+    assert ensure_chat_template(Frozen()) is False

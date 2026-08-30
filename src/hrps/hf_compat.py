@@ -181,6 +181,35 @@ def build_sft_trainer_kwargs(
     return kw
 
 
+# A base checkpoint ships no chat template, and apply_chat_template raises
+# rather than degrading. Patching our own formatter is not enough: TRL calls
+# apply_chat_template independently inside _prepare_dataset, and so does any
+# other consumer. The only fix that covers them all is to give the tokenizer a
+# template when it has none.
+FALLBACK_CHAT_TEMPLATE = (
+    "{% for message in messages %}"
+    "{{ message['role'] }}: {{ message['content'] }}\n"
+    "{% endfor %}"
+    "{% if add_generation_prompt %}assistant: {% endif %}"
+)
+
+
+def ensure_chat_template(tokenizer: Any) -> bool:
+    """Install a plain role-prefixed template if the tokenizer lacks one.
+
+    Returns True if a template was installed. Instruct checkpoints already have
+    one and are left untouched.
+    """
+    if getattr(tokenizer, "chat_template", None):
+        return False
+    try:
+        tokenizer.chat_template = FALLBACK_CHAT_TEMPLATE
+    except Exception:
+        return False
+    logger.info("tokenizer had no chat_template; installed the plain fallback")
+    return True
+
+
 def _flatten_messages(msgs: list[dict[str, Any]], eos: str) -> str:
     """Plain-text rendering for base checkpoints that ship no chat template."""
     parts = [f"{m.get('role', 'user')}: {m.get('content', '')}" for m in msgs]
