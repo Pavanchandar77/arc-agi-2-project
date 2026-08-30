@@ -111,59 +111,84 @@ def grid_to_text(grid: Sequence[Sequence[int]], format_style: str = "compact") -
         return "\n".join(" ".join(str(int(c)) for c in row) for row in grid)
 
 
+# A grid row, once framing and any "Row 7:" label are stripped: nothing but
+# single digits and separators. Requiring the WHOLE line to match is what keeps
+# prose out - "I count 4 objects" must not become the 1x1 grid [[4]].
+_ROW_LABEL = re.compile(r"^(?:row\s*)?\d{1,2}\s*[:.|]\s*", flags=re.IGNORECASE)
+_FRAMING = re.compile(r"^[\s|\[\]'\"]+|[\s|\[\]'\",]+$")
+_DIGIT_ROW = re.compile(r"^[0-9](?:[\s,]+[0-9])*$")
+
+
+def _row_cells(line: str) -> Optional[List[int]]:
+    """Cells of `line` if it is a grid row, else None."""
+    stripped = _FRAMING.sub("", line.strip())
+    stripped = _ROW_LABEL.sub("", stripped).strip()
+    stripped = _FRAMING.sub("", stripped)
+    if not stripped or not _DIGIT_ROW.match(stripped):
+        return None
+    return [int(d) for d in re.findall(r"[0-9]", stripped)]
+
+
+def _scan_grids(text: str) -> List[List[List[int]]]:
+    """Every maximal run of consecutive grid rows, in order of appearance."""
+    found: List[List[List[int]]] = []
+    current: List[List[int]] = []
+    for line in text.splitlines():
+        cells = _row_cells(line)
+        if cells is None:
+            if is_valid_grid(current):
+                found.append(current)
+            current = []
+        else:
+            current.append(cells)
+    if is_valid_grid(current):
+        found.append(current)
+    return found
+
+
 def text_to_grid(text: str) -> Optional[List[List[int]]]:
     """Robustly parse an ARC grid from model output text.
-    
-    Handles:
-    - Code blocks (```json ... ``` or ``` ... ```)
-    - Bracketed lists [[...], [...]]
-    - Space/comma separated numbers line-by-line
-    - Extraneous text/reasoning surrounding the candidate grid
+
+    Handles code blocks, bracketed JSON, and space/comma separated digit lines
+    with reasoning text around them.
+
+    Two rules earn their keep against real model output:
+
+    * A line contributes cells only if the WHOLE line is digits and separators
+      (after stripping framing and any "Row 7:" label). Scanning a line for
+      loose digits instead makes "I count 4 objects" parse as the 1x1 grid
+      [[4]] and return it before the real answer is ever reached.
+    * When several grids are present, the LAST one wins. A model that reasons
+      before answering emits its working first and its answer last, and a model
+      that echoes the input emits the input first.
     """
     if not text or not isinstance(text, str):
         return None
 
     cleaned_text = text.strip()
 
-    # 1. Extract content within markdown code blocks if present
+    # Fenced blocks are the strongest signal, and the last fence is the answer.
     code_blocks = re.findall(r"```(?:json|python)?\s*(.*?)\s*```", cleaned_text, flags=re.DOTALL)
-    candidate_texts = code_blocks + [cleaned_text]
+    candidate_texts = list(reversed(code_blocks)) + [cleaned_text]
 
     for candidate in candidate_texts:
         candidate = candidate.strip()
         if not candidate:
             continue
 
-        # Try 2. JSON array parse: [[...], [...]]
+        # Explicit JSON is unambiguous; take the last well-formed one.
         json_matches = re.findall(r"\[\s*\[.*?\]\s*\]", candidate, flags=re.DOTALL)
-        for jm in json_matches:
+        for jm in reversed(json_matches):
             try:
                 parsed = json.loads(jm)
-                if is_valid_grid(parsed):
-                    return [[int(c) for c in row] for row in parsed]
             except Exception:
-                pass
+                continue
+            if is_valid_grid(parsed):
+                return [[int(c) for c in row] for row in parsed]
 
-        # Try 3. Extract space/comma-separated digit lines
-        lines = candidate.splitlines()
-        candidate_rows: List[List[int]] = []
-        for line in lines:
-            line_str = line.strip()
-            # Remove framing pipes, brackets or quotes if present
-            line_str = re.sub(r"^[\|\s\[\]]+|[\|\s\[\]]+$", "", line_str)
-            # Find all standalone single digits (0-9)
-            digits = re.findall(r"\b([0-9])\b", line_str)
-            if digits:
-                candidate_rows.append([int(d) for d in digits])
-            else:
-                # If we encounter a non-digit line while we have collected candidate rows
-                if candidate_rows:
-                    if is_valid_grid(candidate_rows):
-                        return candidate_rows
-                    candidate_rows = []
-
-        if is_valid_grid(candidate_rows):
-            return candidate_rows
+        grids = _scan_grids(candidate)
+        if grids:
+            return grids[-1]
 
     return None
 
