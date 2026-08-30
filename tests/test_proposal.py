@@ -292,3 +292,33 @@ def test_results_are_deterministic():
     first = propose_and_verify(["rot180", "flip_h | flip_v"], ROT)[0]
     second = propose_and_verify(["rot180", "flip_h | flip_v"], ROT)[0]
     assert first == second
+
+
+# --------------------------------------------------------------------------
+# Harvesting must not assume the data is already on disk
+# --------------------------------------------------------------------------
+
+
+def test_an_explicit_data_root_is_used_as_given(tmp_path):
+    from scripts.harvest_programs import ensure_arc_data
+
+    assert ensure_arc_data(str(tmp_path)) == tmp_path
+
+
+def test_an_existing_default_layout_needs_no_clone(monkeypatch, tmp_path):
+    # Returning None means iter_split can find the corpus unaided.
+    import scripts.harvest_programs as hp
+
+    (tmp_path / "ARC-AGI-2" / "data" / "training").mkdir(parents=True)
+    monkeypatch.setattr(hp, "REPO", tmp_path)
+    assert hp.ensure_arc_data(None) is None
+
+
+def test_missing_data_and_no_git_fails_with_an_actionable_message(monkeypatch, tmp_path):
+    import scripts.harvest_programs as hp
+
+    monkeypatch.setattr(hp, "REPO", tmp_path)
+    monkeypatch.setattr(hp.shutil, "which", lambda name: None)
+    with pytest.raises(SystemExit) as excinfo:
+        hp.ensure_arc_data(None)
+    assert "--data-root" in str(excinfo.value)

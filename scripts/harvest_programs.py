@@ -23,6 +23,8 @@ from __future__ import annotations
 
 import argparse
 import json
+import shutil
+import subprocess
 import sys
 import time
 from pathlib import Path
@@ -34,6 +36,33 @@ sys.path.insert(0, str(REPO))
 from src.hrps.program_prompt import build_training_example  # noqa: E402
 from src.hrps.proposal import parse_program, verify_program  # noqa: E402
 from src.hrps.task import ArcTask, iter_split  # noqa: E402
+
+ARC2_REPO = "https://github.com/arcprize/ARC-AGI-2.git"
+
+
+def ensure_arc_data(explicit: Optional[str] = None) -> Optional[Path]:
+    """Return the data root holding <split>/ folders, cloning ARC-AGI-2 if needed.
+
+    Harvesting runs before training, so it cannot assume the trainer has
+    already fetched the corpus. Returning None means the default layout is
+    already in place and iter_split can find it unaided.
+    """
+    if explicit:
+        return Path(explicit)
+    default = REPO / "ARC-AGI-2" / "data"
+    if (default / "training").is_dir():
+        return None
+    if shutil.which("git") is None:
+        raise SystemExit(
+            f"no ARC data at {default} and git is unavailable. "
+            f"Clone {ARC2_REPO} into {REPO} manually, or pass --data-root."
+        )
+    print(f"[data] cloning {ARC2_REPO}", flush=True)
+    target = REPO / "ARC-AGI-2"
+    subprocess.run(["git", "clone", "--depth", "1", ARC2_REPO, str(target)], check=True)
+    if not (default / "training").is_dir():
+        raise SystemExit(f"clone succeeded but {default / 'training'} is missing")
+    return None
 
 
 def programs_for(task: ArcTask, *, seconds: float, stage: str) -> list[str]:
@@ -100,7 +129,7 @@ def main(argv: Optional[list[str]] = None) -> int:
     corpus = out_dir / "programs.jsonl"
     index = out_dir / "index.json"
 
-    data_root = Path(args.data_root) if args.data_root else None
+    data_root = ensure_arc_data(args.data_root)
     n_tasks = 0
     n_solved = 0
     n_examples = 0
