@@ -238,6 +238,55 @@ class LlmSolver:
         except Exception as exc:
             self.stats.errors.append(f"restore: {type(exc).__name__}")
 
+    def complete(
+        self,
+        messages: list[dict],
+        *,
+        temperature: float = 0.0,
+        attempt: int = 0,
+        max_new_tokens: Optional[int] = None,
+    ) -> Optional[str]:
+        """Raw text for a chat exchange. The shared generation primitive.
+
+        Grid answers and program proposals differ only in what is asked for and
+        how the reply is read, so both go through here.
+        """
+        started = time.perf_counter()
+        try:
+            import torch
+
+            if getattr(self.tokenizer, "chat_template", None):
+                text = self.tokenizer.apply_chat_template(
+                    messages, tokenize=False, add_generation_prompt=True
+                )
+            else:
+                text = "\n\n".join(m.get("content", "") for m in messages)
+            inputs = self.tokenizer(text, return_tensors="pt")
+            inputs = {k: v.to(self.model.device) for k, v in inputs.items()}
+            n_prompt = int(inputs["input_ids"].shape[-1])
+            gen: dict[str, Any] = {
+                "max_new_tokens": int(max_new_tokens or self.config.max_new_tokens),
+                "pad_token_id": self.tokenizer.pad_token_id,
+            }
+            if temperature and temperature > 0:
+                gen.update(
+                    do_sample=True,
+                    temperature=float(temperature),
+                    top_p=float(self.config.top_p),
+                )
+            else:
+                gen["do_sample"] = False
+            torch.manual_seed(self.config.seed + attempt)
+            with torch.no_grad():
+                out = self.model.generate(**inputs, **gen)
+            self.stats.n_generated += 1
+            return self.tokenizer.decode(out[0][n_prompt:], skip_special_tokens=True)
+        except Exception as exc:
+            self.stats.errors.append(f"complete: {type(exc).__name__}: {str(exc)[:120]}")
+            return None
+        finally:
+            self.stats.seconds_generating += time.perf_counter() - started
+
     def _generate_one(
         self, task: TaskDict, test_idx: int, temperature: float, attempt: int
     ) -> Optional[Grid]:

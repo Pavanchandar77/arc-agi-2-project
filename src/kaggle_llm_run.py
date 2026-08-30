@@ -55,6 +55,9 @@ class LlmPhaseConfig:
     temperature: float
     top_p: float
     seed: int
+    propose_programs: bool = True
+    n_proposals: int = 8
+    proposal_tokens: int = 256
 
 
 def _unsolved_ids(report: dict[str, Any], submission: dict[str, Any]) -> list[str]:
@@ -92,6 +95,7 @@ def run_llm_phase(
         return {"skipped": "load_failed", **solver.stats.as_dict()}
 
     n_filled = 0
+    n_program_solved = 0
     for i, task_id in enumerate(targets):
         left = deadline - time.perf_counter()
         if left <= 1.0:
@@ -106,7 +110,26 @@ def run_llm_phase(
         entry = list(submission.get(task_id) or blank_entry(len(task["test"])))
         changed = False
         task_deadline = time.perf_counter() + budget
+
+        # Programs first. A verified proposal reproduces every demonstration
+        # exactly, so it outranks any ungrounded grid the model might emit -
+        # and when none survives, nothing is written and the grid path still
+        # gets its turn on the remaining budget.
+        filled_by_program: set[int] = set()
+        if cfg.propose_programs:
+            filled_by_program = _program_pass(
+                solver, task, task_id, entry, cfg, task_deadline
+            )
+            if filled_by_program:
+                n_program_solved += 1
+                changed = True
+
+        # Only the test inputs a verified program could not answer fall through.
+        # A program can verify on the demonstrations and still fail a
+        # precondition on one test input, and that input still deserves a guess.
         for test_idx in range(len(task["test"])):
+            if test_idx in filled_by_program:
+                continue
             grids = solver.predict(task, test_idx, n_attempts=2, deadline=task_deadline)
             if test_idx >= len(entry):
                 continue
@@ -128,7 +151,48 @@ def run_llm_phase(
                     flush=True,
                 )
     _write(output, submission)
-    return {"n_targets": len(targets), "n_filled": n_filled, **solver.stats.as_dict()}
+    return {
+        "n_targets": len(targets),
+        "n_filled": n_filled,
+        "n_program_verified": n_program_solved,
+        **solver.stats.as_dict(),
+    }
+
+
+def _program_pass(solver, raw_task, task_id, entry, cfg, deadline) -> set[int]:
+    """Sample programs, keep only what the demonstrations prove.
+
+    Writes into `entry` in place and returns the test indices it answered, so
+    the caller knows which inputs still need the grid path. Failure here is
+    never fatal: a task the proposer cannot explain falls through untouched.
+    """
+    try:
+        from src.hrps.program_solver import solve_by_proposal
+        from src.hrps.task import parse_task
+
+        task = parse_task(task_id, raw_task, "test")
+        result = solve_by_proposal(
+            solver,
+            task,
+            n_samples=cfg.n_proposals,
+            temperature=cfg.temperature,
+            max_new_tokens=cfg.proposal_tokens,
+            deadline=deadline,
+        )
+        if not result.solved:
+            return set()
+        wrote: set[int] = set()
+        for test_idx in range(min(len(entry), len(result.attempts[0]))):
+            slot = dict(entry[test_idx])
+            for key, attempt in zip(("attempt_1", "attempt_2"), result.attempts):
+                grid = attempt[test_idx] if test_idx < len(attempt) else None
+                if grid is not None:
+                    slot[key] = to_lists(grid)
+                    wrote.add(test_idx)
+            entry[test_idx] = slot
+        return wrote
+    except Exception:
+        return set()
 
 
 def main(argv: Optional[list[str]] = None) -> int:
@@ -151,6 +215,18 @@ def main(argv: Optional[list[str]] = None) -> int:
     p.add_argument("--top-p", type=float, default=0.9)
     p.add_argument("--seed", type=int, default=0)
     p.add_argument("--no-llm", action="store_true", help="phase 1 only")
+    p.add_argument(
+        "--no-programs",
+        action="store_true",
+        help="skip the program-proposal pass and ask the model for grids directly",
+    )
+    p.add_argument(
+        "--n-proposals",
+        type=int,
+        default=8,
+        help="program samples per task; each is verified against the demonstrations",
+    )
+    p.add_argument("--proposal-tokens", type=int, default=256)
     p.add_argument("--quiet", action="store_true")
     args = p.parse_args(argv)
 
@@ -228,6 +304,9 @@ def main(argv: Optional[list[str]] = None) -> int:
                     temperature=args.temperature,
                     top_p=args.top_p,
                     seed=args.seed,
+                    propose_programs=not args.no_programs,
+                    n_proposals=args.n_proposals,
+                    proposal_tokens=args.proposal_tokens,
                 ),
                 output,
                 verbose=verbose,

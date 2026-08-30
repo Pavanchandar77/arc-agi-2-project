@@ -84,6 +84,70 @@ object selection/recolouring/filtering, colour remapping by frequency rank,
 row-column deduplication, borders, denoising, constant outputs, and a
 last-resort local neighbourhood lookup.
 
+## Neural proposal, symbolic verification
+
+The model proposes programs. The demonstrations decide which survive.
+
+```
+model  ->  candidate programs        sampled several times, wide and cheap
+                |
+        parse and typecheck          unknown names never execute
+                |
+        replay on every demo         exact equality, all pairs, train only
+                |
+        survivors                    missing one demonstration is fatal
+                |
+        consensus on the test input
+```
+
+Asking a model for a grid gives an answer nobody can check without the answer
+key, so sampling more grids buys only a popularity contest. Asking for a
+program gives a hypothesis that can be refuted in microseconds, so sampling
+wide buys real coverage: a bad proposal costs one failed replay, a good one
+solves the task.
+
+Three properties hold by construction, each with a test that fails loudly if it
+stops holding:
+
+* **Test outputs are never read.** `verify_program` touches `task.train` only.
+* **Only catalogued operators run.** Proposals parse into `Op` values whose
+  names must exist in the DSL; anything else is rejected, never evaluated.
+  Python passed as a proposal does not parse.
+* **Exactness is not relaxed.** A program survives only by reproducing every
+  demonstration cell for cell.
+
+Survivors that agree on every demonstration can still diverge on the test
+input, and that divergence is the only honest uncertainty signal available.
+Votes are counted among survivors weighted by simplicity, so every vote was
+paid for with a proof - unlike a vote among raw samples, which measures only
+the model's confidence. This is why it is not the augmented voting below.
+
+### Where the training labels come from
+
+Nobody can hand-label a thousand tasks with programs, and a label nobody checks
+is worse than none. So the verifier generates its own supervision:
+
+```bash
+python scripts/harvest_programs.py --splits training --out data/programs
+python scripts/train_bond.py --programs data/programs/programs.jsonl
+```
+
+The search finds programs, each is re-verified against every demonstration, and
+survivors become `(task, program)` training pairs. Every label is correct by
+construction. Coverage is capped by what search can already express, which is
+the point: the corpus teaches the language, and the model's job is to propose
+compositions search cannot reach in time.
+
+The loop closes. A program the model proposes that survives verification meets
+the same standard as the original corpus, so `append_verified` adds it and the
+next round trains on it - expert iteration with no human in the loop.
+
+### Cost when the model cannot do it
+
+An untrained model emits no valid programs. Sampling is abandoned after the
+greedy attempt produces nothing parseable, so the fallback to grid answers
+costs one generation per task rather than the whole budget.
+
 ### Measured: augmented voting does not help the bank
 
 `src/hrps/voting.py` solves a task under several D8 + colour frames and votes

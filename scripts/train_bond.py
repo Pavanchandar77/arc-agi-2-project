@@ -189,6 +189,42 @@ def build_dataset(data_dir: Path, out_dir: Path, aug_factor: int, max_tasks: Opt
     return train_file, val_file
 
 
+def program_corpus(path: Path, *, val_fraction: float = 0.1) -> tuple[Path, Path]:
+    """Split a harvested program corpus into train and validation files.
+
+    The split is by task, not by row: the same task can yield several programs,
+    and letting one land in train while another lands in validation would leak
+    the answer across the split and make the eval loss a lie.
+    """
+    if not path.is_file():
+        raise SystemExit(
+            f"no program corpus at {path}. Build one first:\n"
+            f"  python scripts/harvest_programs.py --splits training --out data/programs"
+        )
+    rows = [json.loads(line) for line in path.read_text(encoding="utf-8").splitlines() if line.strip()]
+    if not rows:
+        raise SystemExit(f"{path} is empty; harvest found no verified programs")
+    task_ids = sorted({r.get("task_id", "") for r in rows})
+    n_val = max(1, int(len(task_ids) * val_fraction)) if len(task_ids) > 1 else 0
+    val_ids = set(task_ids[:n_val])
+    train_rows = [r for r in rows if r.get("task_id") not in val_ids]
+    val_rows = [r for r in rows if r.get("task_id") in val_ids]
+    if not train_rows:  # tiny corpus: keep everything trainable
+        train_rows, val_rows = rows, []
+    out_dir = path.parent
+    train_file = out_dir / "programs_train.jsonl"
+    val_file = out_dir / "programs_val.jsonl"
+    train_file.write_text("\n".join(json.dumps(r) for r in train_rows) + "\n", encoding="utf-8")
+    if val_rows:
+        val_file.write_text("\n".join(json.dumps(r) for r in val_rows) + "\n", encoding="utf-8")
+    log(
+        "dataset",
+        f"{len(rows)} verified programs over {len(task_ids)} tasks -> "
+        f"{len(train_rows)} train / {len(val_rows)} val (split by task)",
+    )
+    return train_file, val_file
+
+
 def truncation_rate(path: Path, max_seq_length: int) -> tuple[float, int]:
     """Estimated share of examples that will not fit, and the longest seen.
 
@@ -257,6 +293,12 @@ def main(argv: Optional[list[str]] = None) -> int:
     p.add_argument("--epochs", type=int, default=3)
     p.add_argument("--aug-factor", type=int, default=8)
     p.add_argument("--max-tasks", type=int, default=None, help="truncate the dataset for a smoke run")
+    p.add_argument(
+        "--programs",
+        default=None,
+        help="train on a harvested program corpus (data/programs/programs.jsonl) "
+             "instead of grid answers, so every label is one the verifier certified",
+    )
     p.add_argument("--max-seq-length", type=int, default=DEFAULT_MAX_SEQ_LENGTH)
     p.add_argument("--lora-r", type=int, default=16)
     p.add_argument("--lora-alpha", type=int, default=32)
@@ -293,10 +335,13 @@ def main(argv: Optional[list[str]] = None) -> int:
         log("train", f"adapter already exists at {out_dir}; delete it to retrain")
         return 0
 
-    data_dir = ensure_data()
-    train_file, val_file = build_dataset(
-        data_dir, REPO / "data" / "processed", args.aug_factor, args.max_tasks
-    )
+    if args.programs:
+        train_file, val_file = program_corpus(Path(args.programs))
+    else:
+        data_dir = ensure_data()
+        train_file, val_file = build_dataset(
+            data_dir, REPO / "data" / "processed", args.aug_factor, args.max_tasks
+        )
 
     rate, longest = truncation_rate(train_file, args.max_seq_length)
     log(

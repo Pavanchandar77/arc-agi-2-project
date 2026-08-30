@@ -168,7 +168,8 @@ def test_llm_phase_fills_only_its_targets(tmp_path: Path):
             submission,
             raw,
             ["unsolved"],
-            LlmPhaseConfig("/x", None, 30.0, 10.0, 0, 512, 0.7, 0.9, 0),
+            LlmPhaseConfig("/x", None, 30.0, 10.0, 0, 512, 0.7, 0.9, 0,
+                           propose_programs=False),
             out,
             verbose=False,
         )
