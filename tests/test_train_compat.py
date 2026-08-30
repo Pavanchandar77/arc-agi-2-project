@@ -501,3 +501,70 @@ def test_a_tokenizer_that_refuses_assignment_is_survivable():
             raise AttributeError("read only")
 
     assert ensure_chat_template(Frozen()) is False
+
+
+# --------------------------------------------------------------------------
+# The torchao guard must not become the crash it prevents
+# --------------------------------------------------------------------------
+
+
+def test_the_torchao_stub_survives_find_spec(monkeypatch):
+    """Regression: a hand-built module has __spec__ = None, and
+    importlib.util.find_spec raises ValueError on that instead of returning it.
+    transformers calls find_spec("torchao") on import, so a stub without a spec
+    turned the guard into "ValueError: torchao.__spec__ is None"."""
+    import importlib.metadata as md
+    import importlib.util
+    import sys
+
+    from src.hrps.hf_compat import neutralize_incompatible_torchao
+
+    real_version = md.version
+    monkeypatch.setattr(
+        md, "version", lambda name: "0.10.0" if name == "torchao" else real_version(name)
+    )
+    for name in [n for n in sys.modules if n == "torchao" or n.startswith("torchao.")]:
+        monkeypatch.delitem(sys.modules, name, raising=False)
+
+    record = neutralize_incompatible_torchao()
+    try:
+        assert record["action"] == "disabled_incompatible"
+        # The call that used to blow up.
+        assert importlib.util.find_spec("torchao") is not None
+        assert sys.modules["torchao"].__spec__ is not None
+        assert sys.modules["torchao.dtypes"].__spec__ is not None
+    finally:
+        for name in ("torchao", "torchao.dtypes"):
+            sys.modules.pop(name, None)
+
+
+def test_the_dtypes_shim_provides_what_peft_reaches_for(monkeypatch):
+    import importlib.metadata as md
+    import sys
+
+    from src.hrps.hf_compat import neutralize_incompatible_torchao
+
+    real_version = md.version
+    monkeypatch.setattr(
+        md, "version", lambda name: "0.10.0" if name == "torchao" else real_version(name)
+    )
+    neutralize_incompatible_torchao()
+    try:
+        from torchao.dtypes import AffineQuantizedTensor
+
+        assert AffineQuantizedTensor is not None
+    finally:
+        for name in ("torchao", "torchao.dtypes"):
+            sys.modules.pop(name, None)
+
+
+def test_a_compatible_torchao_is_left_alone(monkeypatch):
+    import importlib.metadata as md
+
+    from src.hrps.hf_compat import neutralize_incompatible_torchao
+
+    real_version = md.version
+    monkeypatch.setattr(
+        md, "version", lambda name: "0.16.0" if name == "torchao" else real_version(name)
+    )
+    assert neutralize_incompatible_torchao()["action"] == "kept_compatible"

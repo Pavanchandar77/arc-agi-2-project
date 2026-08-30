@@ -6,6 +6,8 @@ Does not implement QLoRA: this stack loads native fp16/bf16 + LoRA.
 
 from __future__ import annotations
 
+import importlib.machinery
+import importlib.util
 import inspect
 import logging
 import sys
@@ -302,6 +304,11 @@ def neutralize_incompatible_torchao() -> dict[str, Any]:
     stub = types.ModuleType("torchao")
     stub.__version__ = f"{ver}+disabled-for-native-lora"
     stub.__file__ = None
+    # A module built by hand has __spec__ = None, and importlib.util.find_spec
+    # raises ValueError on that rather than returning it. transformers calls
+    # find_spec("torchao") while importing, so a stub without a spec turns this
+    # guard into the crash it exists to prevent.
+    stub.__spec__ = importlib.machinery.ModuleSpec("torchao", loader=None)
 
     def _missing(name: str):
         raise ImportError(
@@ -311,6 +318,7 @@ def neutralize_incompatible_torchao() -> dict[str, Any]:
 
     stub.__getattr__ = _missing  # type: ignore[attr-defined]
     dtypes = types.ModuleType("torchao.dtypes")
+    dtypes.__spec__ = importlib.machinery.ModuleSpec("torchao.dtypes", loader=None)
     dtypes.AffineQuantizedTensor = type("AffineQuantizedTensor", (), {})  # type: ignore[attr-defined]
     sys.modules["torchao"] = stub
     sys.modules["torchao.dtypes"] = dtypes
