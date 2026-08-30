@@ -23,10 +23,12 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
 import shutil
 import subprocess
 import sys
 import time
+from concurrent.futures import ProcessPoolExecutor
 from pathlib import Path
 from typing import Optional
 
@@ -112,6 +114,15 @@ def programs_for(task: ArcTask, *, seconds: float, stage: str) -> list[str]:
     return found
 
 
+def _worker(payload: tuple) -> list[str]:
+    """Runs in a child process. Returns serialized programs, never raises."""
+    task, seconds, stage = payload
+    try:
+        return programs_for(task, seconds=seconds, stage=stage)
+    except Exception:
+        return []
+
+
 def main(argv: Optional[list[str]] = None) -> int:
     p = argparse.ArgumentParser(description="harvest verified programs as supervision")
     p.add_argument("--splits", nargs="+", default=["training"])
@@ -122,6 +133,8 @@ def main(argv: Optional[list[str]] = None) -> int:
     p.add_argument("--limit", type=int, default=None)
     p.add_argument("--max-per-task", type=int, default=4,
                    help="keep at most this many distinct programs per task")
+    p.add_argument("--workers", type=int, default=0,
+                   help="parallel search workers; 0 picks one per core")
     args = p.parse_args(argv)
 
     out_dir = Path(args.out)
@@ -130,35 +143,49 @@ def main(argv: Optional[list[str]] = None) -> int:
     index = out_dir / "index.json"
 
     data_root = ensure_arc_data(args.data_root)
-    n_tasks = 0
     n_solved = 0
     n_examples = 0
     started = time.perf_counter()
     per_task: dict[str, list[str]] = {}
 
+    workers = args.workers or min(8, os.cpu_count() or 1)
+    tasks: list[ArcTask] = []
+    for split in args.splits:
+        for task in iter_split(split, data_root=data_root):
+            if args.limit and len(tasks) >= args.limit:
+                break
+            tasks.append(task)
+    n_tasks = len(tasks)
+    print(
+        f"[harvest] {n_tasks} tasks, {workers} workers, "
+        f"{args.seconds_per_task:.0f}s each -> "
+        f"~{n_tasks * args.seconds_per_task / max(1, workers) / 60:.0f} min",
+        flush=True,
+    )
+
+    payloads = [(t, args.seconds_per_task, args.stage) for t in tasks]
     with corpus.open("w", encoding="utf-8") as handle:
-        for split in args.splits:
-            for task in iter_split(split, data_root=data_root):
-                if args.limit and n_tasks >= args.limit:
-                    break
-                n_tasks += 1
-                programs = programs_for(
-                    task, seconds=args.seconds_per_task, stage=args.stage
-                )[: args.max_per_task]
-                if not programs:
-                    continue
-                n_solved += 1
-                per_task[task.task_id] = programs
-                for program in programs:
-                    handle.write(
-                        json.dumps(build_training_example(task, program)) + "\n"
-                    )
-                    n_examples += 1
-                if n_tasks % 50 == 0:
-                    rate = n_solved / max(1, n_tasks)
+        with ProcessPoolExecutor(max_workers=workers) as pool:
+            for done, (task, programs) in enumerate(
+                zip(tasks, pool.map(_worker, payloads, chunksize=1)), start=1
+            ):
+                programs = programs[: args.max_per_task]
+                if programs:
+                    n_solved += 1
+                    per_task[task.task_id] = programs
+                    for program in programs:
+                        handle.write(
+                            json.dumps(build_training_example(task, program)) + "\n"
+                        )
+                        n_examples += 1
+                    handle.flush()
+                if done % 25 == 0 or done == n_tasks:
+                    elapsed = time.perf_counter() - started
+                    eta = elapsed / done * (n_tasks - done)
                     print(
-                        f"  {n_tasks} tasks, {n_solved} with a verified program "
-                        f"({rate:.1%}), {n_examples} examples",
+                        f"  {done}/{n_tasks}  {n_solved} with a program "
+                        f"({n_solved / done:.1%})  {n_examples} examples  "
+                        f"eta {eta / 60:.1f} min",
                         flush=True,
                     )
 
