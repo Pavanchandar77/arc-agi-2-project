@@ -93,11 +93,18 @@ def _has_module(name: str) -> bool:
 
 
 def detect_environment() -> dict:
-    env = "local"
-    if Path("/kaggle").is_dir():
-        env = "kaggle"
-    elif _has_module("google.colab"):
+    # Order matters. A bare /kaggle directory is not proof of the Kaggle
+    # runtime - Colab images can carry one for dataset integration - so the
+    # definitive google.colab module is checked first, and Kaggle is then
+    # identified by the variables its kernels actually set.
+    if _has_module("google.colab"):
         env = "colab"
+    elif os.environ.get("KAGGLE_KERNEL_RUN_TYPE") or os.environ.get("KAGGLE_URL_BASE"):
+        env = "kaggle"
+    elif Path("/kaggle/working").is_dir() and Path("/kaggle/input").is_dir():
+        env = "kaggle"
+    else:
+        env = "local"
     info = {"environment": env, "python": sys.version.split()[0], "cuda": False}
     try:
         import torch

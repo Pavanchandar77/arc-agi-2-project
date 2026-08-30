@@ -168,3 +168,37 @@ def test_ladder_keeps_a_constant_effective_batch():
 
     effective = {bs * ga for _, _, bs, ga in MODEL_LADDER}
     assert len(effective) == 1, f"effective batch varies across the ladder: {effective}"
+
+
+# --------------------------------------------------------------------------
+# Environment detection
+# --------------------------------------------------------------------------
+
+
+def test_colab_is_not_reported_as_kaggle(monkeypatch, tmp_path):
+    # A bare /kaggle directory exists on some Colab images. The google.colab
+    # module is the definitive signal and must win.
+    import scripts.train_bond as tb
+
+    monkeypatch.setattr(tb, "_has_module", lambda name: name == "google.colab")
+    monkeypatch.delenv("KAGGLE_KERNEL_RUN_TYPE", raising=False)
+    monkeypatch.delenv("KAGGLE_URL_BASE", raising=False)
+    assert tb.detect_environment()["environment"] == "colab"
+
+
+def test_kaggle_is_detected_by_its_own_variables(monkeypatch):
+    import scripts.train_bond as tb
+
+    monkeypatch.setattr(tb, "_has_module", lambda name: False)
+    monkeypatch.setenv("KAGGLE_KERNEL_RUN_TYPE", "Interactive")
+    assert tb.detect_environment()["environment"] == "kaggle"
+
+
+def test_a_plain_machine_is_local(monkeypatch):
+    import scripts.train_bond as tb
+
+    monkeypatch.setattr(tb, "_has_module", lambda name: False)
+    monkeypatch.delenv("KAGGLE_KERNEL_RUN_TYPE", raising=False)
+    monkeypatch.delenv("KAGGLE_URL_BASE", raising=False)
+    monkeypatch.setattr(tb.Path, "is_dir", lambda self: False)
+    assert tb.detect_environment()["environment"] == "local"
