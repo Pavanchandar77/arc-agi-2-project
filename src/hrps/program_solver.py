@@ -119,6 +119,56 @@ def solve_by_proposal(
     )
 
 
+def solve_step_by_step(
+    solver,
+    task: ArcTask,
+    *,
+    beam_width: int = 3,
+    max_depth: int = 4,
+    temperature: float = 0.7,
+    max_new_tokens: int = 96,
+    deadline: Optional[float] = None,
+) -> ProgramSolveResult:
+    """Execution-guided decoding, reported in the same shape as blind proposal.
+
+    Each operator is run before the next is written, so the model composes
+    against what actually happened rather than against what it assumed.
+    """
+    from src.hrps.execution_guided import search_execution_guided
+
+    started = time.perf_counter()
+    result = search_execution_guided(
+        solver,
+        task,
+        beam_width=beam_width,
+        max_depth=max_depth,
+        temperature=temperature,
+        max_new_tokens=max_new_tokens,
+        deadline=deadline,
+    )
+    report = ProposalReport(
+        n_candidates=result.report.n_ops_proposed,
+        n_parsed=result.report.n_states_expanded,
+        n_rejected=result.report.n_ops_rejected,
+        n_verified=1 if result.solved else 0,
+        n_distinct_outputs=1 if result.solved else 0,
+        consensus=1.0 if result.solved else 0.0,
+        winning_program=result.report.program,
+        survivors=[result.report.program] if result.solved else [],
+    )
+    answers = result.answers()
+    n_test = len(task.test_inputs())
+    if not answers:
+        answers = [None] * n_test
+    return ProgramSolveResult(
+        attempts=[list(answers), list(answers)],
+        report=report,
+        n_samples=result.report.n_model_calls,
+        n_raw_candidates=result.report.n_ops_proposed,
+        seconds=time.perf_counter() - started,
+    )
+
+
 def append_verified(
     task: ArcTask,
     programs: list[str],

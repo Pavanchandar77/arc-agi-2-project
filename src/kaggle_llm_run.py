@@ -58,6 +58,9 @@ class LlmPhaseConfig:
     propose_programs: bool = True
     n_proposals: int = 8
     proposal_tokens: int = 256
+    execution_guided: bool = True
+    beam_width: int = 3
+    max_depth: int = 4
 
 
 def _unsolved_ids(report: dict[str, Any], submission: dict[str, Any]) -> list[str]:
@@ -167,18 +170,34 @@ def _program_pass(solver, raw_task, task_id, entry, cfg, deadline) -> set[int]:
     never fatal: a task the proposer cannot explain falls through untouched.
     """
     try:
-        from src.hrps.program_solver import solve_by_proposal
+        from src.hrps.program_solver import solve_by_proposal, solve_step_by_step
         from src.hrps.task import parse_task
 
         task = parse_task(task_id, raw_task, "test")
-        result = solve_by_proposal(
-            solver,
-            task,
-            n_samples=cfg.n_proposals,
-            temperature=cfg.temperature,
-            max_new_tokens=cfg.proposal_tokens,
-            deadline=deadline,
-        )
+        result = None
+        if cfg.execution_guided:
+            # Run each operator before writing the next, so composition is
+            # against what happened rather than what was assumed.
+            result = solve_step_by_step(
+                solver,
+                task,
+                beam_width=cfg.beam_width,
+                max_depth=cfg.max_depth,
+                temperature=cfg.temperature,
+                max_new_tokens=cfg.proposal_tokens,
+                deadline=deadline,
+            )
+        if result is None or not result.solved:
+            # Blind whole-program proposal still gets its turn: a model may
+            # name a pipeline it cannot assemble one operator at a time.
+            result = solve_by_proposal(
+                solver,
+                task,
+                n_samples=cfg.n_proposals,
+                temperature=cfg.temperature,
+                max_new_tokens=cfg.proposal_tokens,
+                deadline=deadline,
+            )
         if not result.solved:
             return set()
         wrote: set[int] = set()
@@ -227,6 +246,13 @@ def main(argv: Optional[list[str]] = None) -> int:
         help="program samples per task; each is verified against the demonstrations",
     )
     p.add_argument("--proposal-tokens", type=int, default=256)
+    p.add_argument(
+        "--no-execution-guided",
+        action="store_true",
+        help="skip stepwise decoding and only propose whole programs blind",
+    )
+    p.add_argument("--beam-width", type=int, default=3)
+    p.add_argument("--max-depth", type=int, default=4)
     p.add_argument("--quiet", action="store_true")
     args = p.parse_args(argv)
 
@@ -307,6 +333,9 @@ def main(argv: Optional[list[str]] = None) -> int:
                     propose_programs=not args.no_programs,
                     n_proposals=args.n_proposals,
                     proposal_tokens=args.proposal_tokens,
+                    execution_guided=not args.no_execution_guided,
+                    beam_width=args.beam_width,
+                    max_depth=args.max_depth,
                 ),
                 output,
                 verbose=verbose,

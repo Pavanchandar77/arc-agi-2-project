@@ -291,3 +291,71 @@ def test_a_single_sample_request_is_honoured():
     fake = FakeSolver(["nothing parseable here"])
     result = solve_by_proposal(fake, ROT, n_samples=1)
     assert result.n_samples == 1
+
+
+# --------------------------------------------------------------------------
+# Execution-guided decoding through the shared result shape
+# --------------------------------------------------------------------------
+
+
+def test_step_by_step_solving_reports_like_blind_proposal():
+    from src.hrps.program_solver import solve_step_by_step
+
+    result = solve_step_by_step(FakeSolver(["rot180"]), ROT, beam_width=1)
+    assert result.solved
+    assert result.report.winning_program == "rot180"
+    assert result.attempts[0][0] == ((4, 4, 3), (2, 1, 1))
+
+
+def test_step_by_step_returns_no_answer_when_nothing_verifies():
+    from src.hrps.program_solver import solve_step_by_step
+
+    result = solve_step_by_step(FakeSolver(["no idea at all"]), ROT, beam_width=1)
+    assert not result.solved
+    assert result.attempts[0] == [None]
+
+
+def test_step_by_step_result_is_serializable():
+    from src.hrps.program_solver import solve_step_by_step
+
+    result = solve_step_by_step(FakeSolver(["rot180"]), ROT, beam_width=1)
+    assert "winning_program" in json.dumps(result.as_dict())
+
+
+def test_the_runner_falls_back_to_blind_proposal(monkeypatch):
+    # Stepwise decoding gets first refusal; a model that can name a whole
+    # pipeline but not assemble it one step at a time must still be heard.
+    from src.kaggle_llm_run import LlmPhaseConfig, _program_pass
+
+    raw = {
+        "train": [{"input": [[1, 2, 3], [4, 5, 6]], "output": [[6, 5, 4], [3, 2, 1]]},
+                  {"input": [[7, 0, 8], [0, 9, 0]], "output": [[0, 9, 0], [8, 0, 7]]}],
+        "test": [{"input": [[1, 1, 2], [3, 4, 4]]}],
+    }
+    entry = [{"attempt_1": [[0]], "attempt_2": [[0]]}]
+    cfg = LlmPhaseConfig(
+        model_path="x", adapter_path=None, seconds=60, per_task_seconds=60,
+        ttt_steps=0, max_new_tokens=64, temperature=0.8, top_p=0.9, seed=0,
+    )
+
+    class OnlyWholePipelines:
+        """Refuses single operators, offers a full program."""
+
+        def complete(self, messages, *, temperature=0.0, attempt=0, max_new_tokens=None):
+            asks_for_one = "next operator" in messages[-1]["content"]
+            return "" if asks_for_one else "rot180"
+
+    assert _program_pass(
+        OnlyWholePipelines(), raw, "rot", entry, cfg, time.perf_counter() + 30
+    ) == {0}
+    assert entry[0]["attempt_1"] == [[4, 4, 3], [2, 1, 1]]
+
+
+def test_execution_guided_is_on_by_default():
+    from src.kaggle_llm_run import LlmPhaseConfig
+
+    cfg = LlmPhaseConfig(
+        model_path="x", adapter_path=None, seconds=1, per_task_seconds=1,
+        ttt_steps=0, max_new_tokens=1, temperature=0.0, top_p=1.0, seed=0,
+    )
+    assert cfg.execution_guided is True

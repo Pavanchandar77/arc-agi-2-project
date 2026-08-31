@@ -122,6 +122,36 @@ Votes are counted among survivors weighted by simplicity, so every vote was
 paid for with a proof - unlike a vote among raw samples, which measures only
 the model's confidence. This is why it is not the augmented voting below.
 
+### Execution-guided decoding
+
+Blind generation asks for a whole program and only then discovers it was
+nonsense. Every wrong guess costs a full generation, and an operator invalid at
+step one is found out after eight more were written on top of it.
+
+Stepwise decoding closes the loop. After each operator the executor runs it on
+every demonstration, and the resulting grids go back into the prompt, next to
+the targets. The model writes the second operator while looking at what the
+first actually did.
+
+```
+original input  ->  [op1]  ->  current state  ->  [op2]  ->  ...
+                                    |
+                     shown to the model, beside the target
+```
+
+Three things follow. A dead branch dies at depth one rather than after a full
+program is built on it. Success is detected by the executor the moment the
+current state equals every target, not asserted by the model. And the search is
+over grid *states* rather than program strings, so `rot180` and
+`flip_h | flip_v` are one node instead of two.
+
+The test input rides through the identical operators, so a solved search hands
+back the answer as a side effect; its output is never read.
+
+Stepwise decoding gets first refusal and blind proposal still gets its turn,
+because a model may name a pipeline it cannot assemble one operator at a time.
+`--no-execution-guided` disables the first pass.
+
 ### Where the training labels come from
 
 Nobody can hand-label a thousand tasks with programs, and a label nobody checks
