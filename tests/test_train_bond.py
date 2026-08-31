@@ -175,15 +175,37 @@ def test_ladder_keeps_a_constant_effective_batch():
 # --------------------------------------------------------------------------
 
 
-def test_colab_is_not_reported_as_kaggle(monkeypatch, tmp_path):
-    # A bare /kaggle directory exists on some Colab images. The google.colab
-    # module is the definitive signal and must win.
+def test_colab_is_detected_when_no_kaggle_signal_is_present(monkeypatch):
     import scripts.train_bond as tb
 
     monkeypatch.setattr(tb, "_has_module", lambda name: name == "google.colab")
     monkeypatch.delenv("KAGGLE_KERNEL_RUN_TYPE", raising=False)
     monkeypatch.delenv("KAGGLE_URL_BASE", raising=False)
+    monkeypatch.setattr(tb.Path, "is_dir", lambda self: False)
     assert tb.detect_environment()["environment"] == "colab"
+
+
+def test_kaggle_wins_over_a_google_colab_import(monkeypatch):
+    """Regression: a live Kaggle run reported "colab" while writing to
+    /kaggle/working, because Kaggle images ship something that satisfies the
+    google.colab import. Kaggle's own variables are the decisive signal."""
+    import scripts.train_bond as tb
+
+    monkeypatch.setattr(tb, "_has_module", lambda name: name == "google.colab")
+    monkeypatch.setenv("KAGGLE_KERNEL_RUN_TYPE", "Interactive")
+    assert tb.detect_environment()["environment"] == "kaggle"
+
+
+def test_the_kaggle_directory_pair_also_wins_over_a_colab_import(monkeypatch):
+    import scripts.train_bond as tb
+
+    monkeypatch.setattr(tb, "_has_module", lambda name: name == "google.colab")
+    monkeypatch.delenv("KAGGLE_KERNEL_RUN_TYPE", raising=False)
+    monkeypatch.delenv("KAGGLE_URL_BASE", raising=False)
+    monkeypatch.setattr(
+        tb.Path, "is_dir", lambda self: str(self) in {"/kaggle/working", "/kaggle/input"}
+    )
+    assert tb.detect_environment()["environment"] == "kaggle"
 
 
 def test_kaggle_is_detected_by_its_own_variables(monkeypatch):

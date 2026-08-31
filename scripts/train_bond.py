@@ -93,16 +93,19 @@ def _has_module(name: str) -> bool:
 
 
 def detect_environment() -> dict:
-    # Order matters. A bare /kaggle directory is not proof of the Kaggle
-    # runtime - Colab images can carry one for dataset integration - so the
-    # definitive google.colab module is checked first, and Kaggle is then
-    # identified by the variables its kernels actually set.
-    if _has_module("google.colab"):
-        env = "colab"
-    elif os.environ.get("KAGGLE_KERNEL_RUN_TYPE") or os.environ.get("KAGGLE_URL_BASE"):
+    # Order by how unambiguous each signal is. KAGGLE_KERNEL_RUN_TYPE and
+    # KAGGLE_URL_BASE are set only by Kaggle kernels, so they are decisive.
+    # The google.colab module is NOT: a live Kaggle run reported "colab" while
+    # writing to /kaggle/working, because Kaggle images ship something that
+    # satisfies that import. Neither is a bare /kaggle directory, which some
+    # Colab images carry for dataset integration - hence the pair of working
+    # and input directories rather than the parent.
+    if os.environ.get("KAGGLE_KERNEL_RUN_TYPE") or os.environ.get("KAGGLE_URL_BASE"):
         env = "kaggle"
     elif Path("/kaggle/working").is_dir() and Path("/kaggle/input").is_dir():
         env = "kaggle"
+    elif _has_module("google.colab"):
+        env = "colab"
     else:
         env = "local"
     info = {"environment": env, "python": sys.version.split()[0], "cuda": False}
